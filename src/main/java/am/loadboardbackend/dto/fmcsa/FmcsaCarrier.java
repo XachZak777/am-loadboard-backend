@@ -1,4 +1,4 @@
-package am.loadboardbackend.dto;
+package am.loadboardbackend.dto.fmcsa;
 
 import lombok.Data;
 
@@ -8,7 +8,7 @@ public class FmcsaCarrier {
     private String allowedToOperate;
     private String statusCode;
 
-    private Long dotNumber;
+    private String dotNumber;
     private String mcNumber;
     private String legalName;
     private String dbaName;

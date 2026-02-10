@@ -1,4 +1,4 @@
-package am.loadboardbackend.dto;
+package am.loadboardbackend.dto.fmcsa;
 
 import lombok.Data;
 

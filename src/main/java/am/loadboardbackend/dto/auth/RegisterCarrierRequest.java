@@ -1,4 +1,6 @@
-package am.loadboardbackend.dto;
+package am.loadboardbackend.dto.auth;
+
+import am.loadboardbackend.dto.CarrierLookupType;
 
 public record RegisterCarrierRequest(
      String email,
