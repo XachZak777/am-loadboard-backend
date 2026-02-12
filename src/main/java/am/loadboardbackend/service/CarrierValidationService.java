@@ -2,36 +2,37 @@ package am.loadboardbackend.service;
 
 import am.loadboardbackend.client.FmcsaClient;
 import am.loadboardbackend.dto.CarrierLookupType;
-import am.loadboardbackend.dto.CarrierResponseDto;
-import am.loadboardbackend.dto.FmcsaCarrierResponse;
+import am.loadboardbackend.dto.fmcsa.FmcsaCarrierResponse;
+import am.loadboardbackend.service.validation.CarrierValidationResult;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import tools.jackson.databind.ObjectMapper;
 
 @Service
 @RequiredArgsConstructor
 public class CarrierValidationService {
+
     private final FmcsaClient fmcsaClient;
+    private final ObjectMapper objectMapper;
 
-    public CarrierResponseDto validate(String value, CarrierLookupType type) {
+    public CarrierValidationResult validate(String value, CarrierLookupType type) {
 
-        FmcsaCarrierResponse raw = (type == CarrierLookupType.DOT)
-                ? fmcsaClient.fetchByDot(value)
-                : fmcsaClient.fetchByMc(value);
+        FmcsaCarrierResponse response =
+                (type == CarrierLookupType.DOT)
+                        ? fmcsaClient.fetchByDot(value)
+                        : fmcsaClient.fetchByMc(value);
 
-        if (raw == null || raw.getContent() == null || raw.getContent().isEmpty()) {
+        if (response == null ||
+                response.getContent() == null ||
+                response.getContent().isEmpty()) {
             throw new RuntimeException("Carrier not found in FMCSA");
         }
 
-        var carrier = raw.getContent().get(0).getCarrier();
-
-        return new CarrierResponseDto(
-                carrier.getDotNumber(),
-                carrier.getMcNumber(),
-                carrier.getLegalName(),
-                carrier.getStatusCode(),
-                carrier.getAllowedToOperate(),
-                true,
-                carrier
-        );
+        try {
+            String rawJson = objectMapper.writeValueAsString(response);
+            return CarrierValidationResult.from(response, rawJson);
+        } catch (Exception e) {
+            throw new IllegalStateException("FMCSA_SERIALIZATION_FAILED", e);
+        }
     }
 }

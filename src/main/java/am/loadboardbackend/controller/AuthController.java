@@ -1,7 +1,7 @@
 package am.loadboardbackend.controller;
 
-import am.loadboardbackend.dto.LoginRequest;
-import am.loadboardbackend.dto.LoginResponse;
+import am.loadboardbackend.dto.auth.LoginRequest;
+import am.loadboardbackend.dto.auth.LoginResponse;
 import am.loadboardbackend.service.AuthService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -17,8 +17,7 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/login")
-    public LoginResponse login(@RequestBody LoginRequest req) {
-        String token = authService.login(req.getEmail(), req.getPassword());
-        return new LoginResponse(token);
+    public LoginResponse login(@RequestBody LoginRequest request) {
+        return authService.login(request.getEmail(), request.getPassword());
     }
 }

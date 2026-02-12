@@ -1,5 +1,6 @@
 package am.loadboardbackend.service;
 
+import am.loadboardbackend.dto.auth.LoginResponse;
 import am.loadboardbackend.model.User;
 import am.loadboardbackend.repository.UserRepository;
 import am.loadboardbackend.security.JwtUtil;
@@ -11,19 +12,18 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class AuthService {
 
-    private final UserRepository userRepo;
-    private final PasswordEncoder encoder;
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
 
-    public String login(String email, String password) {
+    public LoginResponse login(String email, String password) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Invalid credentials"));
 
-        User user = userRepo.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("INVALID_CREDENTIALS"));
-
-        if (!encoder.matches(password, user.getPasswordHash())) {
-            throw new RuntimeException("INVALID_CREDENTIALS");
+        if (!passwordEncoder.matches(password, user.getPasswordHash())) {
+            throw new RuntimeException("Invalid credentials");
         }
 
-        return jwtUtil.generateToken(user);
+        return new LoginResponse(jwtUtil.generateToken(user));
     }
 }

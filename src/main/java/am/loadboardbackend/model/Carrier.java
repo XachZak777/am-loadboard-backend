@@ -7,8 +7,8 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Data
 @Table(name = "carriers")
+@Data
 public class Carrier {
 
     @Id
@@ -16,7 +16,7 @@ public class Carrier {
     private UUID id;
 
     @Column(unique = true, nullable = false)
-    private Long dotNumber;
+    private String dotNumber;
 
     @Column(unique = true)
     private String mcNumber;
@@ -27,7 +27,7 @@ public class Carrier {
     private String operatingStatus;
     private String safetyRating;
 
-    private Boolean verified;
+    private boolean verified;
 
     private String phyStreet;
     private String phyCity;
@@ -38,7 +38,7 @@ public class Carrier {
     private Integer totalDrivers;
     private Integer totalPowerUnits;
 
-    @Column(columnDefinition = "jsonb", nullable = false)
+    @Column(columnDefinition = "jsonb")
     private String rawFmcsa;
 
     private LocalDateTime createdAt;

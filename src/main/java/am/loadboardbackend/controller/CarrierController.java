@@ -1,17 +1,14 @@
 package am.loadboardbackend.controller;
 
-import am.loadboardbackend.dto.CarrierLookupType;
-import am.loadboardbackend.dto.CarrierResponseDto;
-import am.loadboardbackend.dto.LoginResponse;
-import am.loadboardbackend.dto.RegisterCarrierRequest;
-import am.loadboardbackend.model.Carrier;
-import am.loadboardbackend.repository.CarrierRepository;
-import am.loadboardbackend.service.CarrierValidationService;
+import am.loadboardbackend.dto.carrier.CarrierResponseDto;
+import am.loadboardbackend.dto.auth.LoginResponse;
+import am.loadboardbackend.dto.auth.RegisterCarrierRequest;
+import am.loadboardbackend.model.User;
+import am.loadboardbackend.service.CarrierService;
 import am.loadboardbackend.service.RegistrationService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/carriers")
@@ -19,21 +16,18 @@ import java.util.List;
 public class CarrierController {
 
     private final RegistrationService registrationService;
-    private final CarrierValidationService validationService;
-    private final CarrierRepository carrierRepo;
+    private final CarrierService carrierService;
 
     @PostMapping("/register")
-    public LoginResponse register(@RequestBody RegisterCarrierRequest req) {
-        return registrationService.registerCarrier(req);
+    public LoginResponse register(@RequestBody RegisterCarrierRequest request) {
+        return registrationService.registerCarrier(request);
     }
 
-    @GetMapping("/lookup")
-    public CarrierResponseDto lookup(@RequestParam String value, @RequestParam CarrierLookupType type) {
-        return validationService.validate(value, type);
-    }
-
-    @GetMapping
-    public List<Carrier> getAll() {
-        return carrierRepo.findAll();
+    @GetMapping("/me")
+    public CarrierResponseDto me(@AuthenticationPrincipal User user) {
+        if (user.getCarrier() == null) {
+            throw new RuntimeException("User is not a carrier");
+        }
+        return carrierService.getMyCarrier(user.getCarrier().getId());
     }
 }
