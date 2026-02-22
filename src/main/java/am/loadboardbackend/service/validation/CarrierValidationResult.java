@@ -25,8 +25,6 @@ public class CarrierValidationResult {
     private final Integer totalDrivers;
     private final Integer totalPowerUnits;
 
-    private final String rawFmcsaJson;
-
     private CarrierValidationResult(
             String dotNumber,
             String mcNumber,
@@ -40,8 +38,7 @@ public class CarrierValidationResult {
             String phyZip,
             String phyCountry,
             Integer totalDrivers,
-            Integer totalPowerUnits,
-            String rawFmcsaJson
+            Integer totalPowerUnits
     ) {
         this.dotNumber = dotNumber;
         this.mcNumber = mcNumber;
@@ -56,13 +53,10 @@ public class CarrierValidationResult {
         this.phyCountry = phyCountry;
         this.totalDrivers = totalDrivers;
         this.totalPowerUnits = totalPowerUnits;
-        this.rawFmcsaJson = rawFmcsaJson;
     }
 
     public static CarrierValidationResult from(
-            FmcsaCarrierResponse response,
-            String rawJson
-    ) {
+            FmcsaCarrierResponse response) {
         FmcsaCarrier carrier =
                 response.getContent().get(0).getCarrier();
 
@@ -79,8 +73,7 @@ public class CarrierValidationResult {
                 carrier.getPhyZipcode(),
                 carrier.getPhyCountry(),
                 carrier.getTotalDrivers(),
-                carrier.getTotalPowerUnits(),
-                rawJson
+                carrier.getTotalPowerUnits()
         );
     }
 }

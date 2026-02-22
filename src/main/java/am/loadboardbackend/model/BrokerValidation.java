@@ -3,25 +3,28 @@ package am.loadboardbackend.model;
 import jakarta.persistence.*;
 import lombok.Data;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "brokers")
+@Table(name = "broker_validations")
 @Data
-public class Broker {
+public class BrokerValidation {
 
     @Id
     @GeneratedValue
     private UUID id;
 
-    @Column(unique = true, nullable = false)
     private String mcNumber;
-
-    @Column(unique = true)
     private String dotNumber;
-
     private String legalName;
     private String operatingStatus;
     private boolean brokerAuthorityActive;
 
+    private LocalDateTime createdAt;
+
+    @PrePersist
+    void onCreate() {
+        createdAt = LocalDateTime.now();
+    }
 }

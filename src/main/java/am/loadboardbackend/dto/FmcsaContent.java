@@ -1,5 +1,6 @@
 package am.loadboardbackend.dto;
 
+import am.loadboardbackend.dto.fmcsa.FmcsaCarrier;
 import lombok.Data;
 
 @Data

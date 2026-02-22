@@ -8,50 +8,81 @@ import lombok.Getter;
 @Getter
 public class BrokerValidationResult {
 
-    private final String mcNumber;
     private final String dotNumber;
+    private final String mcNumber;
     private final String legalName;
+    private final String dbaName;
 
     private final String operatingStatus;
 
+    private final String allowedToOperate;
+
+    private final String phyStreet;
+    private final String phyCity;
+    private final String phyState;
+    private final String phyZip;
+    private final String phyCountry;
+
+    private final Integer totalDrivers;
+    private final Integer totalPowerUnits;
+
     private final boolean brokerAuthorityActive;
-    private final String rawFmcsaJson;
 
     private BrokerValidationResult(
-            String mcNumber,
             String dotNumber,
+            String mcNumber,
             String legalName,
+            String dbaName,
             String operatingStatus,
-            boolean brokerAuthorityActive,
-            String rawFmcsaJson
+            String allowedToOperate,
+            String phyStreet,
+            String phyCity,
+            String phyState,
+            String phyZip,
+            String phyCountry,
+            Integer totalDrivers,
+            Integer totalPowerUnits,
+            boolean brokerAuthorityActive
     ) {
-        this.mcNumber = mcNumber;
         this.dotNumber = dotNumber;
+        this.mcNumber = mcNumber;
         this.legalName = legalName;
+        this.dbaName = dbaName;
         this.operatingStatus = operatingStatus;
+        this.allowedToOperate = allowedToOperate;
+        this.phyStreet = phyStreet;
+        this.phyCity = phyCity;
+        this.phyState = phyState;
+        this.phyZip = phyZip;
+        this.phyCountry = phyCountry;
+        this.totalDrivers = totalDrivers;
+        this.totalPowerUnits = totalPowerUnits;
         this.brokerAuthorityActive = brokerAuthorityActive;
-        this.rawFmcsaJson = rawFmcsaJson;
     }
 
     public static BrokerValidationResult from(
-            FmcsaCarrierResponse carrierResponse,
-            FmcsaAuthorityResponse authorityResponse,
-            String rawJson
+            FmcsaCarrierResponse response,
+            FmcsaAuthorityResponse authorityResponse
     ) {
-        FmcsaCarrier carrier =
-                carrierResponse.getContent().get(0).getCarrier();
+        FmcsaCarrier carrier = response.getContent().get(0).getCarrier();
 
-        boolean brokerActive =
-                authorityResponse != null &&
-                        authorityResponse.isBrokerAuthorityActive();
+        boolean brokerActive = authorityResponse != null && authorityResponse.isBrokerAuthorityActive();
 
         return new BrokerValidationResult(
-                carrier.getMcNumber(),
                 carrier.getDotNumber(),
+                carrier.getMcNumber(),
                 carrier.getLegalName(),
+                carrier.getDbaName(),
                 carrier.getStatusCode(),
-                brokerActive,
-                rawJson
+                carrier.getAllowedToOperate(),
+                carrier.getPhyStreet(),
+                carrier.getPhyCity(),
+                carrier.getPhyState(),
+                carrier.getPhyZipcode(),
+                carrier.getPhyCountry(),
+                carrier.getTotalDrivers(),
+                carrier.getTotalPowerUnits(),
+                brokerActive
         );
     }
 }

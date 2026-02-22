@@ -1,0 +1,272 @@
+# Loadboard-backend — API endpoint collection
+# Replace {{BASE}} with your server URL (default: http://localhost:8080)
+# After successful login, copy the returned token and set it as the value of the {{TOKEN}} variable below
+
+@BASE = http://localhost:8080
+@TOKEN = <PASTE_JWT_HERE>
+
+### Carrier validation (pre-register)
+POST {{BASE}}/api/validate/carrier
+Content-Type: application/json
+
+{
+  "lookupValue": "123456",
+  "lookupType": "MC"
+}
+
+### Example success response (200) — validation preview (cached)
+###
+### {
+###   "validationId": "11111111-2222-3333-4444-555555555555",
+###   "lookupType": "MC",
+###   "lookupValue": "123456",
+###   "dotNumber": "987654321",
+###   "mcNumber": "123456",
+###   "legalName": "ACME Transport Inc",
+###   "dbaName": "ACME",
+###   "operatingStatus": "A",
+###   "allowedToOperate": "Y",
+###   "phyStreet": "100 Logistics Way",
+###   "phyCity": "Chicago",
+###   "phyState": "IL",
+###   "phyZip": "60601",
+###   "phyCountry": "US",
+###   "totalDrivers": 25,
+###   "totalPowerUnits": 12,
+###   "brokerAuthorityActive": null
+### }
+
+### Broker validation (pre-register)
+### Broker validation (pre-register) — MC example
+POST {{BASE}}/api/validate/broker
+Content-Type: application/json
+
+{
+  "lookupValue": "123456",
+  "lookupType": "MC"
+}
+
+### Broker validation (pre-register) — DOT example
+POST {{BASE}}/api/validate/broker
+Content-Type: application/json
+
+{
+  "lookupValue": "987654320",
+  "lookupType": "DOT"
+}
+
+### Example success response (200) — validation preview (cached)
+### {
+###   "validationId": "22222222-3333-4444-5555-666666666666",
+###   "lookupType": "MC",
+###   "lookupValue": "123456",
+###   "dotNumber": "987654320",
+###   "mcNumber": "123456",
+###   "legalName": "BrokerOne LLC",
+###   "dbaName": null,
+###   "operatingStatus": "A",
+###   "allowedToOperate": null,
+###   "phyStreet": null,
+###   "phyCity": null,
+###   "phyState": null,
+###   "phyZip": null,
+###   "phyCountry": null,
+###   "totalDrivers": null,
+###   "totalPowerUnits": null,
+###   "brokerAuthorityActive": true
+### }
+
+### Save carrier after review (preferred)
+POST {{BASE}}/api/validate/carrier/save
+Content-Type: application/json
+
+{
+  "validationId": "REPLACE_WITH_VALIDATION_ID",
+  "email": "carrier@example.com",
+  "password": "StrongP@ssw0rd"
+}
+
+### Example success response (200) - returns LoginResponse with JWT
+###
+### {
+###   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+### }
+
+### Save broker after review (preferred)
+POST {{BASE}}/api/validate/broker/save
+Content-Type: application/json
+
+{
+  "validationId": "REPLACE_WITH_VALIDATION_ID",
+  "email": "broker@example.com",
+  "password": "Str0ngBrok3rP@ss"
+}
+
+### Example success response (200) - returns LoginResponse with JWT
+### {
+###   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+### }
+
+### Legacy: register carrier (lookup + register in one call)
+POST {{BASE}}/api/carriers/register
+Content-Type: application/json
+
+{
+  "email": "carrier.direct@example.com",
+  "password": "DirectP@ss123",
+  "lookupValue": "123456",
+  "lookupType": "MC"
+}
+
+### Legacy: register broker (lookup + register in one call)
+POST {{BASE}}/api/brokers/register
+Content-Type: application/json
+
+{
+  "email": "broker.direct@example.com",
+  "password": "DirectBrok3r!",
+  "mcNumber": "123456"
+}
+
+### Register carrier with preview (frontend attaches preview fields)
+POST {{BASE}}/api/carriers/register-with-preview
+Content-Type: application/json
+
+{
+  "email": "carrier@example.com",
+  "password": "StrongP@ssw0rd",
+  "dotNumber": "987654321",
+  "mcNumber": "123456",
+  "legalName": "ACME Transport Inc",
+  "dbaName": "ACME",
+  "operatingStatus": "A",
+  "allowedToOperate": "Y",
+  "phyStreet": "100 Logistics Way",
+  "phyCity": "Chicago",
+  "phyState": "IL",
+  "phyZip": "60601",
+  "phyCountry": "US",
+  "totalDrivers": 25,
+  "totalPowerUnits": 12
+}
+
+### Example success response (200) - returns LoginResponse with JWT
+### {
+###   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+### }
+
+### Register broker with preview (frontend attaches preview fields)
+POST {{BASE}}/api/brokers/register-with-preview
+Content-Type: application/json
+
+{
+  "email": "broker@example.com",
+  "password": "Str0ngBrok3rP@ss",
+  "dotNumber": "987654320",
+  "mcNumber": "123456",
+  "legalName": "BrokerOne LLC",
+  "operatingStatus": "A",
+  "brokerAuthorityActive": true
+}
+
+### Example success response (200) - returns LoginResponse with JWT
+### {
+###   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+### }
+
+### Login
+POST {{BASE}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "carrier@example.com",
+  "password": "StrongP@ssw0rd"
+}
+
+### Get current carrier (requires token)
+GET {{BASE}}/api/carriers/me
+Authorization: Bearer {{TOKEN}}
+
+### Get current broker (requires token)
+GET {{BASE}}/api/brokers/me
+Authorization: Bearer {{TOKEN}}
+
+### Create load (broker) — requires token
+POST {{BASE}}/api/brokers/loads
+Content-Type: application/json
+Authorization: Bearer {{TOKEN}}
+
+{
+  "originAddresses": [
+    {
+      "street": "123 Main St",
+      "city": "Chicago",
+      "state": "IL",
+      "zip": "60601",
+      "country": "US"
+    }
+  ],
+  "destinationAddresses": [
+    {
+      "street": "456 Elm St",
+      "city": "Los Angeles",
+      "state": "CA",
+      "zip": "90001",
+      "country": "US"
+    }
+  ],
+  "pickupDate": "2026-03-01",
+  "rate": 1500
+}
+
+### List broker loads (requires token)
+GET {{BASE}}/api/brokers/loads
+Authorization: Bearer {{TOKEN}}
+
+# ---- Extra/Negative checks (optional) ----
+
+### 8) Try `/api/carriers/me` without token (should return 401/forbidden)
+GET {{BASE}}/api/carriers/me
+
+### 9) Register Carrier with lookupType DOT example
+POST {{BASE}}/api/carriers/register
+Content-Type: application/json
+
+{
+  "email": "carrier2@example.com",
+  "password": "Password123!",
+  "lookupValue": "987654",
+  "lookupType": "DOT"
+}
+
+### 10) Login (Broker) - useful after registering a broker
+POST {{BASE}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "broker@example.com",
+  "password": "Password123!"
+}
+
+### 11) Broker register + immediate login flow (example order)
+# 1) Register broker (see request 4)
+# 2) Login with same broker email/password using request 10
+
+### Example: Full carrier flow
+# 1) Register carrier (request 1)
+# 2) Copy token from response and set @TOKEN
+# 3) GET /api/carriers/me (request 3) with Authorization: Bearer {{TOKEN}}
+
+### Quick sample sequence (validate -> save -> use token)
+# 1) POST /api/validate/carrier with lookup payload (see above)
+#    -> receive preview response with validationId and parsed fields
+# 2) Show preview to user for review
+# 3) POST /api/validate/carrier/save with { validationId, email, password }
+#    -> receive { "token": "<jwt>" }
+# 4) Use the token for protected calls, e.g. GET /api/carriers/me
+#    Authorization: Bearer <jwt>
+
+### Example: Full broker flow
+# 1) Register broker (request 4)
+# 2) Login (request 10) -> set @TOKEN
+# 3) POST /api/brokers/loads (request 6) with Authorization: Bearer {{TOKEN}}

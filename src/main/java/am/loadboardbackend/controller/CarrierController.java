@@ -23,6 +23,16 @@ public class CarrierController {
         return registrationService.registerCarrier(request);
     }
 
+    @PostMapping("/register-from-cache")
+    public LoginResponse registerFromCache(@RequestBody am.loadboardbackend.dto.validation.SaveFromValidationRequest req) {
+        return registrationService.registerCarrierFromValidation(req.validationId(), req.email(), req.password());
+    }
+
+    @PostMapping("/register-with-preview")
+    public LoginResponse registerWithPreview(@RequestBody am.loadboardbackend.dto.auth.RegisterCarrierFromPreviewRequest req) {
+        return registrationService.registerCarrierWithPreview(req);
+    }
+
     @GetMapping("/me")
     public CarrierResponseDto me(@AuthenticationPrincipal User user) {
         if (user.getCarrier() == null) {

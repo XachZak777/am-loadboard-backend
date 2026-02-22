@@ -5,13 +5,13 @@ import am.loadboardbackend.dto.carrier.CarrierResponseDto;
 import am.loadboardbackend.model.Carrier;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
-import tools.jackson.databind.ObjectMapper;
+ 
 
 @Component
 @RequiredArgsConstructor
 public class CarrierMapper {
 
-    private final ObjectMapper objectMapper;
+    // ObjectMapper removed as raw JSON is no longer produced here
 
     public CarrierResponseDto toResponse(Carrier carrier) {
         return new CarrierResponseDto(
@@ -41,11 +41,5 @@ public class CarrierMapper {
         );
     }
 
-    public String toRawFmcsaJson(Object fmcsaResponse) {
-        try {
-            return objectMapper.writeValueAsString(fmcsaResponse);
-        } catch (Exception e) {
-            throw new IllegalStateException("FMCSA_SERIALIZATION_FAILED", e);
-        }
-    }
+    // raw FMCSA JSON serialization removed from mapper
 }

@@ -26,15 +26,25 @@ public class JwtUtil {
 
     public String generateToken(User user) {
 
-        return Jwts.builder()
+        JwtBuilder builder = Jwts.builder()
                 .setSubject(user.getId().toString())
-                .claim("carrierId", user.getCarrier().getId().toString())
                 .claim("email", user.getEmail())
+                .claim("role", user.getRole().name())
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + expirationMs))
-                .signWith(key, SignatureAlgorithm.HS256)
-                .compact();
+                .signWith(key, SignatureAlgorithm.HS256);
+
+        if (user.getCarrier() != null) {
+            builder.claim("carrierId", user.getCarrier().getId().toString());
+        }
+
+        if (user.getBroker() != null) {
+            builder.claim("brokerId", user.getBroker().getId().toString());
+        }
+
+        return builder.compact();
     }
+
 
     public boolean validate(String token) {
         try {

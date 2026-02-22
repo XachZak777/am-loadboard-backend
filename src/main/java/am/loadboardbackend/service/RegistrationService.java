@@ -1,12 +1,14 @@
 package am.loadboardbackend.service;
 
-import am.loadboardbackend.dto.carrier.CarrierResponseDto;
 import am.loadboardbackend.dto.auth.LoginResponse;
 import am.loadboardbackend.dto.auth.RegisterCarrierRequest;
-import am.loadboardbackend.dto.broker.BrokerResponseDto;
 import am.loadboardbackend.dto.broker.RegisterBrokerRequest;
 import am.loadboardbackend.model.Broker;
 import am.loadboardbackend.model.Carrier;
+import am.loadboardbackend.model.CarrierValidation;
+import am.loadboardbackend.model.BrokerValidation;
+import am.loadboardbackend.repository.CarrierValidationRepository;
+import am.loadboardbackend.repository.BrokerValidationRepository;
 import am.loadboardbackend.model.User;
 import am.loadboardbackend.model.UserRole;
 import am.loadboardbackend.repository.BrokerRepository;
@@ -17,11 +19,13 @@ import am.loadboardbackend.service.validation.BrokerValidationResult;
 import am.loadboardbackend.service.validation.CarrierValidationResult;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class RegistrationService {
 
     private final UserRepository userRepository;
@@ -30,6 +34,9 @@ public class RegistrationService {
     private final PasswordEncoder passwordEncoder;
     private final CarrierValidationService carrierValidationService;
     private final BrokerValidationService brokerValidationService;
+    private final CarrierValidationRepository carrierValidationRepo;
+    private final BrokerValidationRepository brokerValidationRepo;
+    private final TemporaryValidationStore tempStore;
     private final JwtUtil jwtUtil;
 
     @Transactional
@@ -54,7 +61,6 @@ public class RegistrationService {
         carrier.setPhyCountry(validation.getPhyCountry());
         carrier.setTotalDrivers(validation.getTotalDrivers());
         carrier.setTotalPowerUnits(validation.getTotalPowerUnits());
-        carrier.setRawFmcsa(validation.getRawFmcsaJson());
 
         carrierRepository.save(carrier);
 
@@ -66,24 +72,121 @@ public class RegistrationService {
 
         userRepository.save(user);
 
-        return new LoginResponse(
-                jwtUtil.generateToken(user)
-        );
+        return new LoginResponse(jwtUtil.generateToken(user));
+    }
+
+    @Transactional
+    public LoginResponse registerCarrierFromValidation(java.util.UUID validationId, String email, String password) {
+            boolean usedCache = true;
+            var cached = tempStore.getValidation(validationId);
+
+            Carrier carrier = new Carrier();
+            if (cached != null) {
+                log.info("Registering carrier from cache id={}", validationId);
+                carrier.setDotNumber(cached.dotNumber);
+                carrier.setMcNumber(cached.mcNumber);
+                carrier.setLegalName(cached.legalName);
+                carrier.setDbaName(cached.dbaName);
+                carrier.setOperatingStatus(cached.operatingStatus);
+                carrier.setVerified("Y".equalsIgnoreCase(cached.allowedToOperate));
+                carrier.setPhyStreet(cached.phyStreet);
+                carrier.setPhyCity(cached.phyCity);
+                carrier.setPhyState(cached.phyState);
+                carrier.setPhyZip(cached.phyZip);
+                carrier.setPhyCountry(cached.phyCountry);
+                carrier.setTotalDrivers(cached.totalDrivers);
+                carrier.setTotalPowerUnits(cached.totalPowerUnits);
+            } else {
+                usedCache = false;
+                log.info("Cache miss for carrier validation id={}; falling back to DB", validationId);
+                CarrierValidation cv = carrierValidationRepo.findById(validationId).orElseThrow();
+                carrier.setDotNumber(cv.getDotNumber());
+                carrier.setMcNumber(cv.getMcNumber());
+                carrier.setLegalName(cv.getLegalName());
+                carrier.setDbaName(cv.getDbaName());
+                carrier.setOperatingStatus(cv.getOperatingStatus());
+                carrier.setVerified("Y".equalsIgnoreCase(cv.getAllowedToOperate()));
+                carrier.setPhyStreet(cv.getPhyStreet());
+                carrier.setPhyCity(cv.getPhyCity());
+                carrier.setPhyState(cv.getPhyState());
+                carrier.setPhyZip(cv.getPhyZip());
+                carrier.setPhyCountry(cv.getPhyCountry());
+                carrier.setTotalDrivers(cv.getTotalDrivers());
+                carrier.setTotalPowerUnits(cv.getTotalPowerUnits());
+            }
+
+            carrierRepository.save(carrier);
+
+            tempStore.removeValidation(validationId);
+
+            User user = new User();
+            user.setEmail(email);
+            user.setPasswordHash(passwordEncoder.encode(password));
+            user.setRole(UserRole.ROLE_CARRIER);
+            user.setCarrier(carrier);
+
+            userRepository.save(user);
+
+            log.info("Carrier registered id={} dbId={} email={} cacheEvicted={}", validationId, carrier.getId(), user.getEmail(), usedCache);
+
+            return new LoginResponse(jwtUtil.generateToken(user));
+    }
+
+    @Transactional
+    public LoginResponse registerBrokerFromValidation(java.util.UUID validationId, String email, String password) {
+
+        var cached = tempStore.getValidation(validationId);
+        Broker broker = new Broker();
+        if (cached != null) {
+            String mc = cached.mcNumber;
+            if (mc == null) {
+                mc = tempStore.getBrokerMcNumber(validationId);
+                log.info("Cached result had null mcNumber, using entry mcNumber from tempStore: {}", mc);
+            }
+            broker.setMcNumber(mc);
+            broker.setDotNumber(cached.dotNumber);
+            broker.setLegalName(cached.legalName);
+            broker.setOperatingStatus(cached.operatingStatus);
+            broker.setBrokerAuthorityActive(Boolean.TRUE.equals(cached.brokerAuthorityActive));
+        } else {
+            BrokerValidation bv = brokerValidationRepo.findById(validationId).orElseThrow();
+            broker.setMcNumber(bv.getMcNumber());
+            broker.setDotNumber(bv.getDotNumber());
+            broker.setLegalName(bv.getLegalName());
+            broker.setOperatingStatus(bv.getOperatingStatus());
+            broker.setBrokerAuthorityActive(bv.isBrokerAuthorityActive());
+        }
+        if (broker.getMcNumber() == null) {
+            log.error("Failed to register broker: mcNumber is null for validationId={}", validationId);
+            throw new RuntimeException("Broker mcNumber missing from validation result; cannot persist");
+        }
+
+        brokerRepository.save(broker);
+
+    tempStore.removeValidation(validationId);
+
+        User user = new User();
+        user.setEmail(email);
+        user.setPasswordHash(passwordEncoder.encode(password));
+        user.setRole(UserRole.ROLE_BROKER);
+        user.setBroker(broker);
+
+        userRepository.save(user);
+
+        return new LoginResponse(jwtUtil.generateToken(user));
     }
 
     @Transactional
     public LoginResponse registerBroker(RegisterBrokerRequest req) {
 
-        BrokerValidationResult validation =
-                brokerValidationService.validate(req.mcNumber());
+        BrokerValidationResult validation = brokerValidationService.validate(req.mcNumber());
 
         Broker broker = new Broker();
         broker.setMcNumber(validation.getMcNumber());
         broker.setDotNumber(validation.getDotNumber());
         broker.setLegalName(validation.getLegalName());
         broker.setOperatingStatus(validation.getOperatingStatus());
-        broker.setBrokerAuthorityActive(true);
-        broker.setRawFmcsa(validation.getRawFmcsaJson());
+        broker.setBrokerAuthorityActive(validation.isBrokerAuthorityActive());
 
         brokerRepository.save(broker);
 
@@ -100,4 +203,55 @@ public class RegistrationService {
         );
     }
 
+    @Transactional
+    public LoginResponse registerCarrierWithPreview(am.loadboardbackend.dto.auth.RegisterCarrierFromPreviewRequest req) {
+        Carrier carrier = new Carrier();
+        carrier.setDotNumber(req.dotNumber());
+        carrier.setMcNumber(req.mcNumber());
+        carrier.setLegalName(req.legalName());
+        carrier.setDbaName(req.dbaName());
+        carrier.setOperatingStatus(req.operatingStatus());
+        carrier.setVerified("Y".equalsIgnoreCase(req.allowedToOperate()));
+        carrier.setPhyStreet(req.phyStreet());
+        carrier.setPhyCity(req.phyCity());
+        carrier.setPhyState(req.phyState());
+        carrier.setPhyZip(req.phyZip());
+        carrier.setPhyCountry(req.phyCountry());
+        carrier.setTotalDrivers(req.totalDrivers());
+        carrier.setTotalPowerUnits(req.totalPowerUnits());
+
+        carrierRepository.save(carrier);
+
+        User user = new User();
+        user.setEmail(req.email());
+        user.setPasswordHash(passwordEncoder.encode(req.password()));
+        user.setRole(UserRole.ROLE_CARRIER);
+        user.setCarrier(carrier);
+
+        userRepository.save(user);
+
+        return new LoginResponse(jwtUtil.generateToken(user));
+    }
+
+    @Transactional
+    public LoginResponse registerBrokerWithPreview(am.loadboardbackend.dto.auth.RegisterBrokerFromPreviewRequest req) {
+        Broker broker = new Broker();
+        broker.setDotNumber(req.dotNumber());
+        broker.setMcNumber(req.mcNumber());
+        broker.setLegalName(req.legalName());
+        broker.setOperatingStatus(req.operatingStatus());
+        broker.setBrokerAuthorityActive(Boolean.TRUE.equals(req.brokerAuthorityActive()));
+
+        brokerRepository.save(broker);
+
+        User user = new User();
+        user.setEmail(req.email());
+        user.setPasswordHash(passwordEncoder.encode(req.password()));
+        user.setRole(UserRole.ROLE_BROKER);
+        user.setBroker(broker);
+
+        userRepository.save(user);
+
+        return new LoginResponse(jwtUtil.generateToken(user));
+    }
 }
