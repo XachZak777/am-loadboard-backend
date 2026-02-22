@@ -1,5 +1,6 @@
 package am.loadboardbackend.dto;
 
+import am.loadboardbackend.dto.fmcsa.FmcsaContent;
 import lombok.Data;
 
 import java.util.List;

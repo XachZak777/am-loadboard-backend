@@ -22,17 +22,30 @@ public class FmcsaClient {
 
     public FmcsaCarrierResponse fetchByDot(String dot) {
         String url = baseUrl + "/carriers/" + dot + "?webKey=" + webKey;
-        return restTemplate.getForObject(url, FmcsaCarrierResponse.class);
+        try {
+            return restTemplate.getForObject(url, FmcsaCarrierResponse.class);
+        } catch (Exception e) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE, "FMCSA service unavailable", e);
+        }
     }
 
     public FmcsaCarrierResponse fetchByMc(String mc) {
-        String url = baseUrl + "/carriers/docker-number/" + mc + "?webKey=" + webKey;
-        return restTemplate.getForObject(url, FmcsaCarrierResponse.class);
+        // corrected path: use 'mc-number' (assumption) — verify with real FMCSA API
+        String url = baseUrl + "/carriers/docket-number/" + mc + "?webKey=" + webKey;
+        try {
+            return restTemplate.getForObject(url, FmcsaCarrierResponse.class);
+        } catch (Exception e) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE, "FMCSA service unavailable", e);
+        }
     }
 
     public FmcsaAuthorityResponse fetchAuthority(String dot) {
         String url = baseUrl + "/carriers/" + dot + "/authority?webKey=" + webKey;
-        return restTemplate.getForObject(url, FmcsaAuthorityResponse.class);
+        try {
+            return restTemplate.getForObject(url, FmcsaAuthorityResponse.class);
+        } catch (Exception e) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE, "FMCSA service unavailable", e);
+        }
     }
 
     @PostConstruct

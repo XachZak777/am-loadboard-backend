@@ -15,12 +15,12 @@ public class User {
     @GeneratedValue
     private UUID id;
 
-    @OneToOne(optional = true)
-    @JoinColumn(name = "carrier_id")
+    @OneToOne(optional = true, cascade = CascadeType.PERSIST)
+    @JoinColumn(name = "carrier_id", nullable = true)
     private Carrier carrier;
 
-    @OneToOne(optional = true)
-    @JoinColumn(name = "broker_id")
+    @OneToOne(optional = true, cascade = CascadeType.PERSIST)
+    @JoinColumn(name = "broker_id", nullable = true)
     private Broker broker;
 
     @Enumerated(EnumType.STRING)

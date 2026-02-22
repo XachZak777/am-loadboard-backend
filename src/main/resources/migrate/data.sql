@@ -1,8 +1,8 @@
 CREATE TABLE carriers (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
-        dot_number BIGINT UNIQUE,
-        mc_number BIGINT,
+        dot_number TEXT UNIQUE,
+        mc_number TEXT,
 
         legal_name TEXT NOT NULL,
         dba_name TEXT,
@@ -19,15 +19,27 @@ CREATE TABLE carriers (
         total_drivers INT,
         total_power_units INT,
 
-        raw_fmcsa JSONB NOT NULL,
+        created_at TIMESTAMP DEFAULT now()
+);
+
+CREATE TABLE brokers (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+        mc_number TEXT UNIQUE NOT NULL,
+        dot_number TEXT UNIQUE,
+
+        legal_name TEXT,
+        operating_status TEXT,
+
+        broker_authority_active BOOLEAN,
 
         created_at TIMESTAMP DEFAULT now()
 );
 
 CREATE TABLE users (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-
         carrier_id UUID REFERENCES carriers(id),
+        broker_id UUID REFERENCES brokers(id),
 
         email TEXT UNIQUE NOT NULL,
         password_hash TEXT NOT NULL,

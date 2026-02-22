@@ -7,27 +7,25 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "carriers")
+@Table(name = "carrier_validations")
 @Data
-public class Carrier {
+public class CarrierValidation {
 
     @Id
     @GeneratedValue
     private UUID id;
 
-    @Column(unique = true, nullable = false)
+    private String lookupValue;
+
+    @Enumerated(EnumType.STRING)
+    private am.loadboardbackend.dto.CarrierLookupType lookupType;
+
     private String dotNumber;
-
-    @Column(unique = true)
     private String mcNumber;
-
     private String legalName;
     private String dbaName;
-
     private String operatingStatus;
-    private String safetyRating;
-
-    private boolean verified;
+    private String allowedToOperate;
 
     private String phyStreet;
     private String phyCity;

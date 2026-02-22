@@ -1,29 +1,47 @@
 package am.loadboardbackend.exception;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import am.loadboardbackend.dto.ErrorResponse;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
 import java.time.LocalDateTime;
-import java.util.Map;
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(RuntimeException.class)
-    public ResponseEntity<Map<String, Object>> handleRuntime(RuntimeException ex) {
+    public ResponseEntity<ErrorResponse> handleRuntime(RuntimeException ex) {
+
+        // If caller already uses ResponseStatusException, preserve its status & reason
+        if (ex instanceof org.springframework.web.server.ResponseStatusException rse) {
+            ErrorResponse body = new ErrorResponse(
+                    LocalDateTime.now().toString(),
+                    rse.getStatusCode().value(),
+                    rse.getReason(),
+                    rse.getReason() == null ? rse.getMessage() : rse.getReason()
+            );
+            return ResponseEntity
+                    .status(rse.getStatusCode())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(body);
+        }
 
         HttpStatus status = mapStatus(ex.getMessage());
 
+        ErrorResponse body = new ErrorResponse(
+                LocalDateTime.now().toString(),
+                status.value(),
+                ex.getMessage(),
+                mapMessage(ex.getMessage())
+        );
+
         return ResponseEntity
                 .status(status)
-                .body(Map.of(
-                        "timestamp", LocalDateTime.now(),
-                        "status", status.value(),
-                        "error", ex.getMessage(),
-                        "message", mapMessage(ex.getMessage())
-                ));
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(body);
     }
 
     private HttpStatus mapStatus(String code) {

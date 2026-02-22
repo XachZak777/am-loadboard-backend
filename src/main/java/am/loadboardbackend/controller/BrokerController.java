@@ -29,6 +29,16 @@ public class BrokerController {
         return registrationService.registerBroker(request);
     }
 
+    @PostMapping("/register-from-cache")
+    public LoginResponse registerFromCache(@RequestBody am.loadboardbackend.dto.validation.SaveFromValidationRequest req) {
+        return registrationService.registerBrokerFromValidation(req.validationId(), req.email(), req.password());
+    }
+
+    @PostMapping("/register-with-preview")
+    public LoginResponse registerWithPreview(@RequestBody am.loadboardbackend.dto.auth.RegisterBrokerFromPreviewRequest req) {
+        return registrationService.registerBrokerWithPreview(req);
+    }
+
     @GetMapping("/me")
     public BrokerResponseDto me(@AuthenticationPrincipal User user) {
         if (user.getBroker() == null) {
