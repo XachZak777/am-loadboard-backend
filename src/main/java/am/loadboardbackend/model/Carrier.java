@@ -28,6 +28,7 @@ public class Carrier {
     private String safetyRating;
 
     private boolean verified;
+    private Boolean subscriptionActive = Boolean.FALSE;
 
     private String phyStreet;
     private String phyCity;
