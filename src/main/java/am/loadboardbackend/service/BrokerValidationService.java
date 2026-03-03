@@ -12,6 +12,7 @@ import am.loadboardbackend.dto.validation.LookupResponse;
 // ...existing code...
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 
 @Service
 @Slf4j
@@ -56,11 +57,11 @@ public class BrokerValidationService {
                 authorityResponse
         );
 
-        // Ensure we cache a canonical MC number: prefer parsed MC, else fall back to the lookup value when the lookup was MC
-        String mcToCache = result.getMcNumber();
-        if (mcToCache == null && lookupType == CarrierLookupType.MC) {
-            mcToCache = value;
-        }
+                // Ensure we cache a canonical MC number: prefer parsed MC, else fall back to the lookup value when the lookup was MC
+                String mcToCache = result.getMcNumber();
+                if (mcToCache == null && lookupType == CarrierLookupType.MC) {
+                        mcToCache = value;
+                }
 
         var carrier = carrierResponse.getContent().get(0).getCarrier();
 
@@ -83,18 +84,22 @@ public class BrokerValidationService {
                 result.isBrokerAuthorityActive()
         );
 
-        java.util.UUID id = java.util.UUID.randomUUID();
-
         // persist broker validation so cache miss fallback works
         BrokerValidation bv = new BrokerValidation();
-        bv.setId(id);
         bv.setMcNumber(mcToCache);
         bv.setDotNumber(payload.dotNumber);
         bv.setLegalName(payload.legalName);
         bv.setOperatingStatus(payload.operatingStatus);
         bv.setBrokerAuthorityActive(Boolean.TRUE.equals(payload.brokerAuthorityActive));
 
-                brokerValidationRepo.save(bv);
+        BrokerValidation saved = null;
+                                try {
+                                        saved = brokerValidationRepo.save(bv);
+                                } catch (ObjectOptimisticLockingFailureException e) {
+                                        log.warn("Optimistic lock failure while saving BrokerValidation; continuing.", e);
+                                }
+
+        java.util.UUID id = saved != null ? saved.getId() : java.util.UUID.randomUUID();
 
                 // if payload.mcNumber is null but we computed a canonical mcToCache, persist it into the brokerMcCache
                 if (payload.mcNumber == null && mcToCache != null) {
@@ -109,7 +114,8 @@ public class BrokerValidationService {
                 lookupType.name(),
                 value,
                 payload.dotNumber,
-                payload.mcNumber,
+                // prefer parsed mcNumber when present, else return canonical mcToCache
+                payload.mcNumber != null ? payload.mcNumber : mcToCache,
                 payload.legalName,
                 payload.dbaName,
                 payload.operatingStatus,

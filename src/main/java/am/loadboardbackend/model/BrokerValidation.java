@@ -14,6 +14,8 @@ public class BrokerValidation {
     @Id
     @GeneratedValue
     private UUID id;
+    @Version
+    private Long version;
 
     private String mcNumber;
     private String dotNumber;

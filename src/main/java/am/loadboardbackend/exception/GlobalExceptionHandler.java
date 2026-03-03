@@ -6,6 +6,9 @@ import org.springframework.http.ResponseEntity;
 import am.loadboardbackend.dto.ErrorResponse;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.http.converter.HttpMessageNotWritableException;
+import org.springframework.web.HttpMediaTypeNotAcceptableException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 
 import java.time.LocalDateTime;
 
@@ -41,6 +44,32 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(status)
                 .contentType(MediaType.APPLICATION_JSON)
+                .body(body);
+    }
+
+    @ExceptionHandler({HttpMediaTypeNotAcceptableException.class, HttpMessageNotWritableException.class})
+    public ResponseEntity<ErrorResponse> handleSerializationErrors(Exception ex) {
+        ErrorResponse body = new ErrorResponse(
+                java.time.LocalDateTime.now().toString(),
+                org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                "SERIALIZATION_ERROR",
+                ex.getMessage()
+        );
+        return ResponseEntity.status(org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR)
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .body(body);
+    }
+
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    public ResponseEntity<ErrorResponse> handleOptimisticLock(ObjectOptimisticLockingFailureException ex) {
+        ErrorResponse body = new ErrorResponse(
+                LocalDateTime.now().toString(),
+                org.springframework.http.HttpStatus.CONFLICT.value(),
+                "RESOURCE_CONFLICT",
+                "Resource was modified by another process; please retry"
+        );
+        return ResponseEntity.status(org.springframework.http.HttpStatus.CONFLICT)
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
                 .body(body);
     }
 

@@ -14,6 +14,7 @@ import am.loadboardbackend.dto.validation.LookupResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 
 @Service
 @RequiredArgsConstructor
@@ -40,7 +41,7 @@ public class CarrierValidationService {
 
         CarrierValidationResult result = CarrierValidationResult.from(response);
 
-        ValidationPayload payload = new ValidationPayload(
+    ValidationPayload payload = new ValidationPayload(
                 value,
                 type,
                 result.getDotNumber(),
@@ -59,15 +60,20 @@ public class CarrierValidationService {
                 null
         );
 
-    java.util.UUID id = java.util.UUID.randomUUID();
+    // We'll let JPA generate the DB id when saving; compute cache id from saved entity
+
+    // Determine canonical MC to cache/persist: prefer parsed MC, else if the lookup was MC use the lookup value
+    String mcToCache = payload.mcNumber;
+    if (mcToCache == null && type == CarrierLookupType.MC) {
+        mcToCache = value;
+    }
 
     // persist to carrier_validations so cache misses can fall back to DB
     CarrierValidation cv = new CarrierValidation();
-    cv.setId(id);
     cv.setLookupValue(value);
     cv.setLookupType(type);
     cv.setDotNumber(payload.dotNumber);
-    cv.setMcNumber(payload.mcNumber);
+    cv.setMcNumber(mcToCache);
     cv.setLegalName(payload.legalName);
     cv.setDbaName(payload.dbaName);
     cv.setOperatingStatus(payload.operatingStatus);
@@ -80,7 +86,20 @@ public class CarrierValidationService {
     cv.setTotalDrivers(payload.totalDrivers);
     cv.setTotalPowerUnits(payload.totalPowerUnits);
 
-    carrierValidationRepo.save(cv);
+    CarrierValidation saved = null;
+    try {
+        saved = carrierValidationRepo.save(cv);
+    } catch (ObjectOptimisticLockingFailureException e) {
+        // Another transaction updated/deleted the same row — continue and keep the cached preview.
+        log.warn("Optimistic lock failure while saving CarrierValidation; continuing.", e);
+    }
+
+    java.util.UUID id = saved != null ? saved.getId() : java.util.UUID.randomUUID();
+
+    // If parsed mcNumber is null but we computed a canonical mcToCache (because the lookup was MC), store it in the brokerMcCache
+    if (payload.mcNumber == null && mcToCache != null) {
+        tempStore.storeBrokerMcNumber(id, mcToCache);
+    }
 
     tempStore.storeValidation(id, payload);
         log.info("Carrier validation cached id={} for value={}", id, value);
@@ -90,7 +109,8 @@ public class CarrierValidationService {
                 type.name(),
                 value,
                 payload.dotNumber,
-                payload.mcNumber,
+                // prefer the parsed mcNumber when present, otherwise return the canonical mcToCache
+                payload.mcNumber != null ? payload.mcNumber : mcToCache,
                 payload.legalName,
                 payload.dbaName,
                 payload.operatingStatus,

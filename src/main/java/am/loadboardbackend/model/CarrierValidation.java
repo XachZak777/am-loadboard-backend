@@ -14,6 +14,8 @@ public class CarrierValidation {
     @Id
     @GeneratedValue
     private UUID id;
+    @Version
+    private Long version;
 
     private String lookupValue;
 

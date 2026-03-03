@@ -8,6 +8,7 @@
 ### Carrier validation (pre-register)
 POST {{BASE}}/api/validate/carrier
 Content-Type: application/json
+Accept: application/json
 
 {
   "lookupValue": "123456",
@@ -40,6 +41,7 @@ Content-Type: application/json
 ### Broker validation (pre-register) — MC example
 POST {{BASE}}/api/validate/broker
 Content-Type: application/json
+Accept: application/json
 
 {
   "lookupValue": "123456",
@@ -49,6 +51,7 @@ Content-Type: application/json
 ### Broker validation (pre-register) — DOT example
 POST {{BASE}}/api/validate/broker
 Content-Type: application/json
+Accept: application/json
 
 {
   "lookupValue": "987654320",
@@ -79,6 +82,7 @@ Content-Type: application/json
 ### Save carrier after review (preferred)
 POST {{BASE}}/api/validate/carrier/save
 Content-Type: application/json
+Accept: application/json
 
 {
   "validationId": "REPLACE_WITH_VALIDATION_ID",
@@ -95,6 +99,7 @@ Content-Type: application/json
 ### Save broker after review (preferred)
 POST {{BASE}}/api/validate/broker/save
 Content-Type: application/json
+Accept: application/json
 
 {
   "validationId": "REPLACE_WITH_VALIDATION_ID",
@@ -177,6 +182,7 @@ Content-Type: application/json
 ### Login
 POST {{BASE}}/api/auth/login
 Content-Type: application/json
+Accept: application/json
 
 {
   "email": "carrier@example.com",
@@ -186,41 +192,41 @@ Content-Type: application/json
 ### Get current carrier (requires token)
 GET {{BASE}}/api/carriers/me
 Authorization: Bearer {{TOKEN}}
+Accept: application/json
 
 ### Get current broker (requires token)
 GET {{BASE}}/api/brokers/me
 Authorization: Bearer {{TOKEN}}
 
 ### Create load (broker) — requires token
-POST {{BASE}}/api/brokers/loads
+POST {{BASE}}/api/loads
 Content-Type: application/json
 Authorization: Bearer {{TOKEN}}
+Accept: application/json
 
 {
-  "originAddresses": [
-    {
-      "street": "123 Main St",
-      "city": "Chicago",
-      "state": "IL",
-      "zip": "60601",
-      "country": "US"
-    }
-  ],
-  "destinationAddresses": [
-    {
-      "street": "456 Elm St",
-      "city": "Los Angeles",
-      "state": "CA",
-      "zip": "90001",
-      "country": "US"
-    }
-  ],
-  "pickupDate": "2026-03-01",
-  "rate": 1500
+  "pickupCity": "Chicago",
+  "pickupState": "IL",
+  "deliveryCity": "Los Angeles",
+  "deliveryState": "CA",
+  "description": "FTL - dry van",
+  "weight": 12000,
+  "price": 1500
 }
 
 ### List broker loads (requires token)
-GET {{BASE}}/api/brokers/loads
+GET {{BASE}}/api/loads
+Authorization: Bearer {{TOKEN}}
+Accept: application/json
+
+### Toggle subscription (admin/testing) - activate carrier subscription
+POST {{BASE}}/api/subscription/activate/{{CARRIER_ID}}
+Content-Type: application/json
+Authorization: Bearer {{TOKEN}}
+
+### Toggle subscription (admin/testing) - deactivate carrier subscription
+POST {{BASE}}/api/subscription/deactivate/{{CARRIER_ID}}
+Content-Type: application/json
 Authorization: Bearer {{TOKEN}}
 
 # ---- Extra/Negative checks (optional) ----

@@ -7,6 +7,7 @@ import am.loadboardbackend.security.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 @Service
 @RequiredArgsConstructor
@@ -25,5 +26,13 @@ public class AuthService {
         }
 
         return new LoginResponse(jwtUtil.generateToken(user));
+    }
+
+    public am.loadboardbackend.model.User currentUserOrThrow() {
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        if (principal instanceof am.loadboardbackend.model.User user) {
+            return user;
+        }
+        throw new RuntimeException("No authenticated user");
     }
 }
