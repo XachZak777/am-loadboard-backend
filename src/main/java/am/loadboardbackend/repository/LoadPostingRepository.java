@@ -7,5 +7,6 @@ import java.util.List;
 import java.util.UUID;
 
 public interface LoadPostingRepository extends JpaRepository<LoadPosting, UUID> {
-    List<LoadPosting> findAllByCarrierId(UUID carrierId);
+    List<LoadPosting> findAllByBrokerId(UUID brokerId);
+    List<LoadPosting> findAllByStatus(am.loadboardbackend.model.LoadPosting.LoadStatus status);
 }

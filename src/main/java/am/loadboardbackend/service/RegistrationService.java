@@ -41,6 +41,7 @@ public class RegistrationService {
 
     @Transactional
     public LoginResponse registerCarrier(RegisterCarrierRequest req) {
+        log.info("RegisterCarrier start lookupValue={} lookupType={} email={}", req.lookupValue(), req.lookupType(), req.email());
 
         CarrierValidationResult validation =
                 carrierValidationService.validate(req.lookupValue(), req.lookupType());
@@ -62,7 +63,8 @@ public class RegistrationService {
         carrier.setTotalDrivers(validation.getTotalDrivers());
         carrier.setTotalPowerUnits(validation.getTotalPowerUnits());
 
-        carrierRepository.save(carrier);
+    carrierRepository.save(carrier);
+    log.info("Carrier entity persisted id={} mc={} dot={}", carrier.getId(), carrier.getMcNumber(), carrier.getDotNumber());
 
         User user = new User();
         user.setEmail(req.email());
@@ -71,12 +73,14 @@ public class RegistrationService {
         user.setCarrier(carrier);
 
         userRepository.save(user);
+        log.info("RegisterCarrier success email={} userId={} carrierId={}", user.getEmail(), user.getId(), carrier.getId());
 
         return new LoginResponse(jwtUtil.generateToken(user));
     }
 
     @Transactional
     public LoginResponse registerCarrierFromValidation(java.util.UUID validationId, String email, String password) {
+        log.info("RegisterCarrierFromValidation start validationId={} email={}", validationId, email);
             boolean usedCache = true;
             var cached = tempStore.getValidation(validationId);
 
@@ -116,6 +120,7 @@ public class RegistrationService {
             }
 
             carrierRepository.save(carrier);
+            log.info("Carrier persisted from validation validationId={} carrierId={}", validationId, carrier.getId());
 
             tempStore.removeValidation(validationId);
 
@@ -125,15 +130,15 @@ public class RegistrationService {
             user.setRole(UserRole.ROLE_CARRIER);
             user.setCarrier(carrier);
 
-            userRepository.save(user);
+        userRepository.save(user);
+        log.info("RegisterCarrierFromValidation success validationId={} email={} userId={} carrierId={} cacheEvicted={}", validationId, user.getEmail(), user.getId(), carrier.getId(), usedCache);
 
-            log.info("Carrier registered id={} dbId={} email={} cacheEvicted={}", validationId, carrier.getId(), user.getEmail(), usedCache);
-
-            return new LoginResponse(jwtUtil.generateToken(user));
+        return new LoginResponse(jwtUtil.generateToken(user));
     }
 
     @Transactional
     public LoginResponse registerBrokerFromValidation(java.util.UUID validationId, String email, String password) {
+        log.info("RegisterBrokerFromValidation start validationId={} email={}", validationId, email);
 
         var cached = tempStore.getValidation(validationId);
         Broker broker = new Broker();
@@ -162,6 +167,7 @@ public class RegistrationService {
         }
 
         brokerRepository.save(broker);
+        log.info("Broker persisted from validation validationId={} brokerId={}", validationId, broker.getId());
 
     tempStore.removeValidation(validationId);
 
@@ -172,12 +178,14 @@ public class RegistrationService {
         user.setBroker(broker);
 
         userRepository.save(user);
+        log.info("RegisterBrokerFromValidation success validationId={} email={} userId={} brokerId={}", validationId, user.getEmail(), user.getId(), broker.getId());
 
         return new LoginResponse(jwtUtil.generateToken(user));
     }
 
     @Transactional
     public LoginResponse registerBroker(RegisterBrokerRequest req) {
+        log.info("RegisterBroker start mcNumber={} email={}", req.mcNumber(), req.email());
 
         BrokerValidationResult validation = brokerValidationService.validate(req.mcNumber());
 
@@ -196,15 +204,17 @@ public class RegistrationService {
         user.setRole(UserRole.ROLE_BROKER);
         user.setBroker(broker);
 
-        userRepository.save(user);
+    userRepository.save(user);
+    log.info("RegisterBroker success email={} userId={} brokerId={}", user.getEmail(), user.getId(), broker.getId());
 
-        return new LoginResponse(
-                jwtUtil.generateToken(user)
-        );
+    return new LoginResponse(
+        jwtUtil.generateToken(user)
+    );
     }
 
     @Transactional
     public LoginResponse registerCarrierWithPreview(am.loadboardbackend.dto.auth.RegisterCarrierFromPreviewRequest req) {
+        log.info("RegisterCarrierWithPreview start email={} mc={} dot={}", req.email(), req.mcNumber(), req.dotNumber());
         Carrier carrier = new Carrier();
         carrier.setDotNumber(req.dotNumber());
         carrier.setMcNumber(req.mcNumber());
@@ -229,12 +239,14 @@ public class RegistrationService {
         user.setCarrier(carrier);
 
         userRepository.save(user);
+        log.info("RegisterCarrierWithPreview success email={} userId={} carrierId={}", user.getEmail(), user.getId(), carrier.getId());
 
         return new LoginResponse(jwtUtil.generateToken(user));
     }
 
     @Transactional
     public LoginResponse registerBrokerWithPreview(am.loadboardbackend.dto.auth.RegisterBrokerFromPreviewRequest req) {
+        log.info("RegisterBrokerWithPreview start email={} mc={} dot={}", req.email(), req.mcNumber(), req.dotNumber());
         Broker broker = new Broker();
         broker.setDotNumber(req.dotNumber());
         broker.setMcNumber(req.mcNumber());
@@ -251,6 +263,7 @@ public class RegistrationService {
         user.setBroker(broker);
 
         userRepository.save(user);
+        log.info("RegisterBrokerWithPreview success email={} userId={} brokerId={}", user.getEmail(), user.getId(), broker.getId());
 
         return new LoginResponse(jwtUtil.generateToken(user));
     }

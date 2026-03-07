@@ -1,7 +1,7 @@
 package am.loadboardbackend.controller;
 
-import am.loadboardbackend.model.Carrier;
-import am.loadboardbackend.repository.CarrierRepository;
+import am.loadboardbackend.service.SubscriptionService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -11,28 +11,23 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.UUID;
 
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api/subscription")
 public class SubscriptionController {
 
-    private final CarrierRepository carrierRepo;
-
-    public SubscriptionController(CarrierRepository carrierRepo) {
-        this.carrierRepo = carrierRepo;
-    }
+    private final SubscriptionService subscriptionService;
 
     @PostMapping("/activate/{carrierId}")
     public ResponseEntity<String> activate(@PathVariable UUID carrierId) {
-        Carrier carrier = carrierRepo.findById(carrierId).orElseThrow();
-        carrier.setSubscriptionActive(Boolean.TRUE);
-        carrierRepo.save(carrier);
+        String redirectUrl = subscriptionService.activate(carrierId);
+        // If stripe session URL returned, return it so frontend can redirect user
+        if (redirectUrl != null) return ResponseEntity.ok(redirectUrl);
         return ResponseEntity.ok("activated");
     }
 
     @PostMapping("/deactivate/{carrierId}")
     public ResponseEntity<String> deactivate(@PathVariable UUID carrierId) {
-        Carrier carrier = carrierRepo.findById(carrierId).orElseThrow();
-        carrier.setSubscriptionActive(Boolean.FALSE);
-        carrierRepo.save(carrier);
+        subscriptionService.deactivate(carrierId);
         return ResponseEntity.ok("deactivated");
     }
 }

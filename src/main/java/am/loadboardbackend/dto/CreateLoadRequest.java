@@ -6,8 +6,14 @@ import lombok.Data;
 public class CreateLoadRequest {
     private String pickupCity;
     private String pickupState;
+    private String pickupStreet;
+    private String pickupZip;
+    private String pickupCountry;
     private String deliveryCity;
     private String deliveryState;
+    private String deliveryStreet;
+    private String deliveryZip;
+    private String deliveryCountry;
     private String description;
     private Double weight;
     private Double price;

@@ -205,10 +205,16 @@ Authorization: Bearer {{TOKEN}}
 Accept: application/json
 
 {
+  "pickupStreet": "100 Logistics Way",
   "pickupCity": "Chicago",
   "pickupState": "IL",
+  "pickupZip": "60601",
+  "pickupCountry": "US",
+  "deliveryStreet": "200 Freight Ave",
   "deliveryCity": "Los Angeles",
   "deliveryState": "CA",
+  "deliveryZip": "90001",
+  "deliveryCountry": "US",
   "description": "FTL - dry van",
   "weight": 12000,
   "price": 1500
@@ -218,6 +224,18 @@ Accept: application/json
 GET {{BASE}}/api/loads
 Authorization: Bearer {{TOKEN}}
 Accept: application/json
+
+### Place a bid or Book Now (carrier) — requires token
+POST {{BASE}}/api/loads/bid
+Content-Type: application/json
+Authorization: Bearer {{TOKEN}}
+Accept: application/json
+
+{
+  "loadId": "REPLACE_WITH_LOAD_ID",
+  "amount": 1400,
+  "bookNow": false
+}
 
 ### Toggle subscription (admin/testing) - activate carrier subscription
 POST {{BASE}}/api/subscription/activate/{{CARRIER_ID}}
