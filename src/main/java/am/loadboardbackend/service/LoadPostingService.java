@@ -7,33 +7,32 @@ import am.loadboardbackend.model.Carrier;
 import am.loadboardbackend.model.LoadPosting;
 import am.loadboardbackend.model.User;
 import am.loadboardbackend.repository.LoadPostingRepository;
-import am.loadboardbackend.repository.BrokerRepository;
 import am.loadboardbackend.repository.CarrierRepository;
-import am.loadboardbackend.repository.UserRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import am.loadboardbackend.model.Bid;
+import am.loadboardbackend.repository.BidRepository;
+import am.loadboardbackend.dto.load.CreateBidRequest;
+import am.loadboardbackend.dto.load.BidResponse;
 
 @Service
 public class LoadPostingService {
 
     private final LoadPostingRepository loadRepo;
-    private final BrokerRepository brokerRepo;
     private final CarrierRepository carrierRepo;
-    private final UserRepository userRepo;
     private final AuthService authService;
+    private final BidRepository bidRepo;
 
-    public LoadPostingService(LoadPostingRepository loadRepo, BrokerRepository brokerRepo, CarrierRepository carrierRepo, UserRepository userRepo, AuthService authService) {
+    public LoadPostingService(LoadPostingRepository loadRepo, CarrierRepository carrierRepo, AuthService authService, BidRepository bidRepo) {
         this.loadRepo = loadRepo;
-        this.brokerRepo = brokerRepo;
         this.carrierRepo = carrierRepo;
-        this.userRepo = userRepo;
         this.authService = authService;
+        this.bidRepo = bidRepo;
     }
 
     public LoadPostingDto createLoad(CreateLoadRequest req) {
@@ -44,15 +43,25 @@ public class LoadPostingService {
         Broker broker = current.getBroker();
 
         LoadPosting load = new LoadPosting();
-        // For now we link load to broker's preferred carrier if exists; to keep model simple we'll link to broker as carrier reference not required
-        // Instead link to broker's broker id by creating a carrier placeholder - but better to require carrier selection. Simpler: use broker's mcNumber to find a carrier and link if exists
-        Optional<Carrier> maybeCarrier = carrierRepo.findByMcNumber(broker.getMcNumber());
-        maybeCarrier.ifPresent(load::setCarrier);
+        // set owner broker
+        load.setBroker(broker);
 
-        load.setPickupCity(req.getPickupCity());
-        load.setPickupState(req.getPickupState());
-        load.setDeliveryCity(req.getDeliveryCity());
-        load.setDeliveryState(req.getDeliveryState());
+        // use embedded Address on LoadPosting
+    am.loadboardbackend.model.Address pickup = new am.loadboardbackend.model.Address();
+    pickup.setStreet(req.getPickupStreet());
+    pickup.setCity(req.getPickupCity());
+    pickup.setState(req.getPickupState());
+    pickup.setZip(req.getPickupZip());
+    pickup.setCountry(req.getPickupCountry());
+    load.setPickupAddress(pickup);
+
+    am.loadboardbackend.model.Address delivery = new am.loadboardbackend.model.Address();
+    delivery.setStreet(req.getDeliveryStreet());
+    delivery.setCity(req.getDeliveryCity());
+    delivery.setState(req.getDeliveryState());
+    delivery.setZip(req.getDeliveryZip());
+    delivery.setCountry(req.getDeliveryCountry());
+    load.setDeliveryAddress(delivery);
         load.setDescription(req.getDescription());
         load.setWeight(req.getWeight());
         load.setPrice(req.getPrice());
@@ -69,10 +78,21 @@ public class LoadPostingService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only brokers can edit loads");
         }
 
-        load.setPickupCity(req.getPickupCity());
-        load.setPickupState(req.getPickupState());
-        load.setDeliveryCity(req.getDeliveryCity());
-        load.setDeliveryState(req.getDeliveryState());
+    am.loadboardbackend.model.Address pickup2 = load.getPickupAddress() == null ? new am.loadboardbackend.model.Address() : load.getPickupAddress();
+    pickup2.setStreet(req.getPickupStreet());
+    pickup2.setCity(req.getPickupCity());
+    pickup2.setState(req.getPickupState());
+    pickup2.setZip(req.getPickupZip());
+    pickup2.setCountry(req.getPickupCountry());
+    load.setPickupAddress(pickup2);
+
+    am.loadboardbackend.model.Address delivery2 = load.getDeliveryAddress() == null ? new am.loadboardbackend.model.Address() : load.getDeliveryAddress();
+    delivery2.setStreet(req.getDeliveryStreet());
+    delivery2.setCity(req.getDeliveryCity());
+    delivery2.setState(req.getDeliveryState());
+    delivery2.setZip(req.getDeliveryZip());
+    delivery2.setCountry(req.getDeliveryCountry());
+    load.setDeliveryAddress(delivery2);
         load.setDescription(req.getDescription());
         load.setWeight(req.getWeight());
         load.setPrice(req.getPrice());
@@ -104,7 +124,7 @@ public class LoadPostingService {
         if (carrier.getSubscriptionActive() == null || !carrier.getSubscriptionActive()) {
             return List.of();
         }
-        return loadRepo.findAll().stream().map(this::toDto).collect(Collectors.toList());
+        return loadRepo.findAll().stream().filter(p -> p.getStatus() == null || p.getStatus().name().equals("OPEN")).map(this::toDto).collect(Collectors.toList());
     }
 
     public List<LoadPostingDto> listAllPublic() {
@@ -114,15 +134,104 @@ public class LoadPostingService {
     private LoadPostingDto toDto(LoadPosting p) {
         LoadPostingDto dto = new LoadPostingDto();
         dto.setId(p.getId());
-        dto.setPickupCity(p.getPickupCity());
-        dto.setPickupState(p.getPickupState());
-        dto.setDeliveryCity(p.getDeliveryCity());
-        dto.setDeliveryState(p.getDeliveryState());
+        if (p.getPickupAddress() != null) {
+            dto.setPickupStreet(p.getPickupAddress().getStreet());
+            dto.setPickupCity(p.getPickupAddress().getCity());
+            dto.setPickupState(p.getPickupAddress().getState());
+            dto.setPickupZip(p.getPickupAddress().getZip());
+            dto.setPickupCountry(p.getPickupAddress().getCountry());
+        }
+        if (p.getDeliveryAddress() != null) {
+            dto.setDeliveryStreet(p.getDeliveryAddress().getStreet());
+            dto.setDeliveryCity(p.getDeliveryAddress().getCity());
+            dto.setDeliveryState(p.getDeliveryAddress().getState());
+            dto.setDeliveryZip(p.getDeliveryAddress().getZip());
+            dto.setDeliveryCountry(p.getDeliveryAddress().getCountry());
+        }
         dto.setDescription(p.getDescription());
         dto.setWeight(p.getWeight());
         dto.setPrice(p.getPrice());
         dto.setCreatedAt(p.getCreatedAt());
-        if (p.getCarrier() != null) dto.setCarrierId(p.getCarrier().getId());
+        if (p.getAssignedCarrier() != null) dto.setAssignedCarrierId(p.getAssignedCarrier().getId());
+        dto.setStatus(p.getStatus() != null ? p.getStatus().name() : null);
         return dto;
+    }
+
+    // Bidding / booking operations
+    public BidResponse placeBid(CreateBidRequest req) {
+        User current = authService.currentUserOrThrow();
+        if (current.getCarrier() == null) {
+            throw new ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN, "Only carriers can bid");
+        }
+        Carrier carrier = current.getCarrier();
+
+        LoadPosting load = loadRepo.findById(req.loadId()).orElseThrow(() -> new ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Load not found"));
+        if (load.getStatus() != null && load.getStatus().name().equals("ASSIGNED")) {
+            throw new ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT, "Load already assigned");
+        }
+
+        Bid bid = new Bid();
+        bid.setLoad(load);
+        bid.setCarrier(carrier);
+        bid.setAmount(req.amount());
+        bid.setBookNow(req.bookNow());
+        bid.setStatus(Bid.BidStatus.PENDING);
+
+        Bid saved = bidRepo.save(bid);
+
+        // Do not auto-assign on bookNow — broker must approve. Keep bid record for broker review.
+        return toBidResponse(saved);
+    }
+
+    public List<BidResponse> listBids(UUID loadId) {
+        // only broker who owns loads or admin can list — for simplicity, allow any authenticated broker
+        User current = authService.currentUserOrThrow();
+        if (current.getBroker() == null) throw new ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN, "Only brokers can view bids");
+    return bidRepo.findAllByLoadId(loadId).stream().map(this::toBidResponse).collect(Collectors.toList());
+    }
+
+    public void approveBid(UUID bidId) {
+        User current = authService.currentUserOrThrow();
+        if (current.getBroker() == null) throw new ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN, "Only brokers can approve bids");
+        Bid bid = bidRepo.findById(bidId).orElseThrow(() -> new ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Bid not found"));
+        LoadPosting load = bid.getLoad();
+        // assign
+        load.setAssignedCarrier(bid.getCarrier());
+        load.setStatus(LoadPosting.LoadStatus.ASSIGNED);
+        loadRepo.save(load);
+
+        // mark this bid approved
+        bid.setStatus(Bid.BidStatus.APPROVED);
+        bidRepo.save(bid);
+
+        // mark other bids for the same load as REJECTED
+        bidRepo.findAllByLoadId(load.getId()).stream()
+                .filter(b -> !b.getId().equals(bid.getId()))
+                .forEach(other -> {
+                    other.setStatus(Bid.BidStatus.REJECTED);
+                    bidRepo.save(other);
+                });
+    }
+
+    public void cancelBooking(UUID loadId) {
+        User current = authService.currentUserOrThrow();
+        if (current.getBroker() == null) throw new ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN, "Only brokers can cancel bookings");
+        LoadPosting load = loadRepo.findById(loadId).orElseThrow(() -> new ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Load not found"));
+        // unassign and mark open
+        // mark any approved bids as cancelled and reopen the load
+        bidRepo.findAllByLoadId(load.getId()).stream()
+                .filter(b -> b.getStatus() == Bid.BidStatus.APPROVED)
+                .forEach(approved -> {
+                    approved.setStatus(Bid.BidStatus.CANCELLED);
+                    bidRepo.save(approved);
+                });
+
+        load.setAssignedCarrier(null);
+        load.setStatus(LoadPosting.LoadStatus.OPEN);
+        loadRepo.save(load);
+    }
+
+    private BidResponse toBidResponse(Bid b) {
+        return new BidResponse(b.getId(), b.getLoad().getId(), b.getCarrier().getId(), b.getAmount(), b.isBookNow(), b.getStatus().name(), b.getCreatedAt(), b.getUpdatedAt());
     }
 }

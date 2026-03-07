@@ -169,6 +169,7 @@
             <artifactId>caffeine</artifactId>
             <version>3.1.8</version>
         </dependency>
+        <!-- Stripe Java SDK removed for now; we provide a placeholder redirect URL when configured. -->
     </dependencies>
 
     <build>

@@ -5,12 +5,14 @@ import am.loadboardbackend.model.User;
 import am.loadboardbackend.repository.UserRepository;
 import am.loadboardbackend.security.JwtUtil;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AuthService {
 
     private final UserRepository userRepository;
@@ -18,14 +20,22 @@ public class AuthService {
     private final JwtUtil jwtUtil;
 
     public LoginResponse login(String email, String password) {
+        log.info("Login attempt email={}", email);
+
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Invalid credentials"));
+                .orElseThrow(() -> {
+                    log.warn("Login failed: user not found email={}", email);
+                    return new RuntimeException("Invalid credentials");
+                });
 
         if (!passwordEncoder.matches(password, user.getPasswordHash())) {
+            log.warn("Login failed: invalid password email={}", email);
             throw new RuntimeException("Invalid credentials");
         }
 
-        return new LoginResponse(jwtUtil.generateToken(user));
+        String token = jwtUtil.generateToken(user);
+        log.info("Login success email={} userId={}", email, user.getId());
+        return new LoginResponse(token);
     }
 
     public am.loadboardbackend.model.User currentUserOrThrow() {
