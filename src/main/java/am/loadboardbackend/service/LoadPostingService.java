@@ -2,10 +2,7 @@ package am.loadboardbackend.service;
 
 import am.loadboardbackend.dto.CreateLoadRequest;
 import am.loadboardbackend.dto.LoadPostingDto;
-import am.loadboardbackend.model.Broker;
-import am.loadboardbackend.model.Carrier;
-import am.loadboardbackend.model.LoadPosting;
-import am.loadboardbackend.model.User;
+import am.loadboardbackend.model.*;
 import am.loadboardbackend.repository.LoadPostingRepository;
 import am.loadboardbackend.repository.CarrierRepository;
 import org.springframework.http.HttpStatus;
@@ -15,7 +12,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import am.loadboardbackend.model.Bid;
+
 import am.loadboardbackend.repository.BidRepository;
 import am.loadboardbackend.dto.load.CreateBidRequest;
 import am.loadboardbackend.dto.load.BidResponse;
@@ -175,7 +172,7 @@ public class LoadPostingService {
         bid.setCarrier(carrier);
         bid.setAmount(req.amount());
         bid.setBookNow(req.bookNow());
-        bid.setStatus(Bid.BidStatus.PENDING);
+        bid.setStatus(BidStatus.PENDING);
 
         Bid saved = bidRepo.save(bid);
 
@@ -201,14 +198,14 @@ public class LoadPostingService {
         loadRepo.save(load);
 
         // mark this bid approved
-        bid.setStatus(Bid.BidStatus.APPROVED);
+        bid.setStatus(BidStatus.APPROVED);
         bidRepo.save(bid);
 
         // mark other bids for the same load as REJECTED
         bidRepo.findAllByLoadId(load.getId()).stream()
                 .filter(b -> !b.getId().equals(bid.getId()))
                 .forEach(other -> {
-                    other.setStatus(Bid.BidStatus.REJECTED);
+                    other.setStatus(BidStatus.REJECTED);
                     bidRepo.save(other);
                 });
     }
@@ -220,9 +217,9 @@ public class LoadPostingService {
         // unassign and mark open
         // mark any approved bids as cancelled and reopen the load
         bidRepo.findAllByLoadId(load.getId()).stream()
-                .filter(b -> b.getStatus() == Bid.BidStatus.APPROVED)
+                .filter(b -> b.getStatus() == BidStatus.APPROVED)
                 .forEach(approved -> {
-                    approved.setStatus(Bid.BidStatus.CANCELLED);
+                    approved.setStatus(BidStatus.CANCELLED);
                     bidRepo.save(approved);
                 });
 
