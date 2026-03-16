@@ -2,6 +2,7 @@ package am.loadboardbackend.service;
 
 import am.loadboardbackend.dto.auth.LoginResponse;
 import am.loadboardbackend.dto.auth.RegisterCarrierRequest;
+import am.loadboardbackend.dto.auth.RegisterAdminRequest;
 import am.loadboardbackend.dto.broker.RegisterBrokerRequest;
 import am.loadboardbackend.model.Broker;
 import am.loadboardbackend.model.Carrier;
@@ -38,6 +39,7 @@ public class RegistrationService {
     private final BrokerValidationRepository brokerValidationRepo;
     private final TemporaryValidationStore tempStore;
     private final JwtUtil jwtUtil;
+    private final AuthService authService;
 
     @Transactional
     public LoginResponse registerCarrier(RegisterCarrierRequest req) {
@@ -266,5 +268,35 @@ public class RegistrationService {
         log.info("RegisterBrokerWithPreview success email={} userId={} brokerId={}", user.getEmail(), user.getId(), broker.getId());
 
         return new LoginResponse(jwtUtil.generateToken(user));
+    }
+
+    @Transactional
+    public LoginResponse registerAdmin(RegisterAdminRequest request) {
+        // Check if any admin exists; if yes, require authentication
+        long adminCount = userRepository.countByRole(UserRole.ROLE_ADMIN);
+        if (adminCount > 0) {
+            User currentUser = authService.currentUserOrThrow();
+            if (currentUser.getRole() != UserRole.ROLE_ADMIN) {
+                throw new RuntimeException("Only admins can create new admins");
+            }
+        }
+
+        log.info("Registering admin email={}", request.getEmail());
+
+        // Check if email already exists
+        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+            throw new RuntimeException("Email already registered");
+        }
+
+        // Create admin user
+        User admin = new User();
+        admin.setEmail(request.getEmail());
+        admin.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+        admin.setRole(UserRole.ROLE_ADMIN);
+
+        User savedAdmin = userRepository.save(admin);
+        log.info("Admin registered successfully email={} userId={}", request.getEmail(), savedAdmin.getId());
+
+        return new LoginResponse(jwtUtil.generateToken(savedAdmin));
     }
 }
