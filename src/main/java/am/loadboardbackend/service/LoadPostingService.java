@@ -1,7 +1,7 @@
 package am.loadboardbackend.service;
 
-import am.loadboardbackend.dto.CreateLoadRequest;
-import am.loadboardbackend.dto.LoadPostingDto;
+import am.loadboardbackend.dto.load.CreateLoadRequest;
+import am.loadboardbackend.dto.load.LoadPostingDto;
 import am.loadboardbackend.model.*;
 import am.loadboardbackend.repository.LoadPostingRepository;
 import am.loadboardbackend.repository.CarrierRepository;
@@ -43,22 +43,32 @@ public class LoadPostingService {
         // set owner broker
         load.setBroker(broker);
 
-        // use embedded Address on LoadPosting
-    am.loadboardbackend.model.Address pickup = new am.loadboardbackend.model.Address();
-    pickup.setStreet(req.getPickupStreet());
-    pickup.setCity(req.getPickupCity());
-    pickup.setState(req.getPickupState());
-    pickup.setZip(req.getPickupZip());
-    pickup.setCountry(req.getPickupCountry());
-    load.setPickupAddress(pickup);
+        load.setPickupType(req.getPickupType());
+        load.setDropType(req.getDropType());
 
-    am.loadboardbackend.model.Address delivery = new am.loadboardbackend.model.Address();
-    delivery.setStreet(req.getDeliveryStreet());
-    delivery.setCity(req.getDeliveryCity());
-    delivery.setState(req.getDeliveryState());
-    delivery.setZip(req.getDeliveryZip());
-    delivery.setCountry(req.getDeliveryCountry());
-    load.setDeliveryAddress(delivery);
+        am.loadboardbackend.model.LoadAddress pickup = new am.loadboardbackend.model.LoadAddress();
+        pickup.setStreet(req.getPickupStreet());
+        pickup.setCity(req.getPickupCity());
+        pickup.setState(req.getPickupState());
+        pickup.setZip(req.getPickupZip());
+        pickup.setCountry(req.getPickupCountry());
+        pickup.setLotNumber(req.getPickupLotNumber());
+        load.setPickupAddress(pickup);
+
+        am.loadboardbackend.model.LoadAddress drop = new am.loadboardbackend.model.LoadAddress();
+        drop.setStreet(req.getDropStreet());
+        drop.setCity(req.getDropCity());
+        drop.setState(req.getDropState());
+        drop.setZip(req.getDropZip());
+        drop.setCountry(req.getDropCountry());
+        drop.setLotNumber(req.getDropLotNumber());
+        load.setDropAddress(drop);
+
+        am.loadboardbackend.model.VehicleInfo vehicle = new am.loadboardbackend.model.VehicleInfo();
+        vehicle.setMake(req.getVehicleMake());
+        vehicle.setModel(req.getVehicleModel());
+        vehicle.setYear(req.getVehicleYear());
+        load.setVehicle(vehicle);
         load.setDescription(req.getDescription());
         load.setWeight(req.getWeight());
         load.setPrice(req.getPrice());
@@ -75,21 +85,32 @@ public class LoadPostingService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only brokers can edit loads");
         }
 
-    am.loadboardbackend.model.Address pickup2 = load.getPickupAddress() == null ? new am.loadboardbackend.model.Address() : load.getPickupAddress();
-    pickup2.setStreet(req.getPickupStreet());
-    pickup2.setCity(req.getPickupCity());
-    pickup2.setState(req.getPickupState());
-    pickup2.setZip(req.getPickupZip());
-    pickup2.setCountry(req.getPickupCountry());
-    load.setPickupAddress(pickup2);
+        load.setPickupType(req.getPickupType());
+        load.setDropType(req.getDropType());
 
-    am.loadboardbackend.model.Address delivery2 = load.getDeliveryAddress() == null ? new am.loadboardbackend.model.Address() : load.getDeliveryAddress();
-    delivery2.setStreet(req.getDeliveryStreet());
-    delivery2.setCity(req.getDeliveryCity());
-    delivery2.setState(req.getDeliveryState());
-    delivery2.setZip(req.getDeliveryZip());
-    delivery2.setCountry(req.getDeliveryCountry());
-    load.setDeliveryAddress(delivery2);
+        am.loadboardbackend.model.LoadAddress pickup2 = load.getPickupAddress() == null ? new am.loadboardbackend.model.LoadAddress() : load.getPickupAddress();
+        pickup2.setStreet(req.getPickupStreet());
+        pickup2.setCity(req.getPickupCity());
+        pickup2.setState(req.getPickupState());
+        pickup2.setZip(req.getPickupZip());
+        pickup2.setCountry(req.getPickupCountry());
+        pickup2.setLotNumber(req.getPickupLotNumber());
+        load.setPickupAddress(pickup2);
+
+        am.loadboardbackend.model.LoadAddress drop2 = load.getDropAddress() == null ? new am.loadboardbackend.model.LoadAddress() : load.getDropAddress();
+        drop2.setStreet(req.getDropStreet());
+        drop2.setCity(req.getDropCity());
+        drop2.setState(req.getDropState());
+        drop2.setZip(req.getDropZip());
+        drop2.setCountry(req.getDropCountry());
+        drop2.setLotNumber(req.getDropLotNumber());
+        load.setDropAddress(drop2);
+
+        am.loadboardbackend.model.VehicleInfo v2 = load.getVehicle() == null ? new am.loadboardbackend.model.VehicleInfo() : load.getVehicle();
+        v2.setMake(req.getVehicleMake());
+        v2.setModel(req.getVehicleModel());
+        v2.setYear(req.getVehicleYear());
+        load.setVehicle(v2);
         load.setDescription(req.getDescription());
         load.setWeight(req.getWeight());
         load.setPrice(req.getPrice());
@@ -131,19 +152,28 @@ public class LoadPostingService {
     private LoadPostingDto toDto(LoadPosting p) {
         LoadPostingDto dto = new LoadPostingDto();
         dto.setId(p.getId());
+        dto.setPickupType(p.getPickupType() != null ? p.getPickupType().name() : null);
+        dto.setDropType(p.getDropType() != null ? p.getDropType().name() : null);
         if (p.getPickupAddress() != null) {
             dto.setPickupStreet(p.getPickupAddress().getStreet());
             dto.setPickupCity(p.getPickupAddress().getCity());
             dto.setPickupState(p.getPickupAddress().getState());
             dto.setPickupZip(p.getPickupAddress().getZip());
             dto.setPickupCountry(p.getPickupAddress().getCountry());
+            dto.setPickupLotNumber(p.getPickupAddress().getLotNumber());
         }
-        if (p.getDeliveryAddress() != null) {
-            dto.setDeliveryStreet(p.getDeliveryAddress().getStreet());
-            dto.setDeliveryCity(p.getDeliveryAddress().getCity());
-            dto.setDeliveryState(p.getDeliveryAddress().getState());
-            dto.setDeliveryZip(p.getDeliveryAddress().getZip());
-            dto.setDeliveryCountry(p.getDeliveryAddress().getCountry());
+        if (p.getDropAddress() != null) {
+            dto.setDropStreet(p.getDropAddress().getStreet());
+            dto.setDropCity(p.getDropAddress().getCity());
+            dto.setDropState(p.getDropAddress().getState());
+            dto.setDropZip(p.getDropAddress().getZip());
+            dto.setDropCountry(p.getDropAddress().getCountry());
+            dto.setDropLotNumber(p.getDropAddress().getLotNumber());
+        }
+        if (p.getVehicle() != null) {
+            dto.setVehicleMake(p.getVehicle().getMake());
+            dto.setVehicleModel(p.getVehicle().getModel());
+            dto.setVehicleYear(p.getVehicle().getYear());
         }
         dto.setDescription(p.getDescription());
         dto.setWeight(p.getWeight());

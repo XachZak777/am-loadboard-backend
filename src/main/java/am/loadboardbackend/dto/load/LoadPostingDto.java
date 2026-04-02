@@ -1,4 +1,4 @@
-package am.loadboardbackend.dto;
+package am.loadboardbackend.dto.load;
 
 import lombok.Data;
 
@@ -8,16 +8,28 @@ import java.util.UUID;
 @Data
 public class LoadPostingDto {
     private UUID id;
+
+    private String pickupType;
+    private String dropType;
+
     private String pickupStreet;
     private String pickupCity;
     private String pickupState;
     private String pickupZip;
     private String pickupCountry;
-    private String deliveryStreet;
-    private String deliveryCity;
-    private String deliveryState;
-    private String deliveryZip;
-    private String deliveryCountry;
+    private String pickupLotNumber;
+
+    private String dropStreet;
+    private String dropCity;
+    private String dropState;
+    private String dropZip;
+    private String dropCountry;
+    private String dropLotNumber;
+
+    private String vehicleMake;
+    private String vehicleModel;
+    private Integer vehicleYear;
+
     private String description;
     private Double weight;
     private Double price;

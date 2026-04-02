@@ -1,5 +1,6 @@
 package am.loadboardbackend.model;
 
+import am.loadboardbackend.dto.carrier.CarrierLookupType;
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -20,7 +21,7 @@ public class CarrierValidation {
     private String lookupValue;
 
     @Enumerated(EnumType.STRING)
-    private am.loadboardbackend.dto.CarrierLookupType lookupType;
+    private CarrierLookupType lookupType;
 
     private String dotNumber;
     private String mcNumber;

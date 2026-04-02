@@ -1,6 +1,6 @@
 package am.loadboardbackend.controller;
 
-import am.loadboardbackend.dto.LoadPostingDto;
+import am.loadboardbackend.dto.load.LoadPostingDto;
 import am.loadboardbackend.model.AuditLog;
 import am.loadboardbackend.model.Broker;
 import am.loadboardbackend.model.Carrier;

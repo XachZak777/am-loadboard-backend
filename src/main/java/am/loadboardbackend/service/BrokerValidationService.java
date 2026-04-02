@@ -1,7 +1,7 @@
 package am.loadboardbackend.service;
 
 import am.loadboardbackend.client.FmcsaClient;
-import am.loadboardbackend.dto.CarrierLookupType;
+import am.loadboardbackend.dto.carrier.CarrierLookupType;
 import am.loadboardbackend.dto.fmcsa.FmcsaAuthorityResponse;
 import am.loadboardbackend.dto.fmcsa.FmcsaCarrierResponse;
 import am.loadboardbackend.service.validation.BrokerValidationResult;
@@ -28,11 +28,11 @@ public class BrokerValidationService {
                 this.brokerValidationRepo = brokerValidationRepo;
         }
 
-                public LookupResponse validateAndCache(String value, am.loadboardbackend.dto.CarrierLookupType lookupType) {
+                public LookupResponse validateAndCache(String value, CarrierLookupType lookupType) {
                                 log.info("Starting broker validation for lookupType={} value={}", lookupType, value);
 
                 FmcsaCarrierResponse carrierResponse =
-                        (lookupType == am.loadboardbackend.dto.CarrierLookupType.DOT)
+                        (lookupType == CarrierLookupType.DOT)
                                 ? fmcsaClient.fetchByDot(value)
                                 : fmcsaClient.fetchByMc(value);
 

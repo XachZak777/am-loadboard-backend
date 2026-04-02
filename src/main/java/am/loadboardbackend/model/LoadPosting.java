@@ -28,25 +28,49 @@ public class LoadPosting {
     @Enumerated(EnumType.STRING)
     private LoadStatus status = LoadStatus.OPEN;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "pickup_type")
+    private PickupType pickupType;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "drop_type")
+    private DropType dropType;
+
+    /**
+     * Pickup address for the load (separated from other address usage like Carrier physical address).
+     */
     @Embedded
     @AttributeOverrides({
         @AttributeOverride(name = "street", column = @Column(name = "pickup_street")),
         @AttributeOverride(name = "city", column = @Column(name = "pickup_city")),
         @AttributeOverride(name = "state", column = @Column(name = "pickup_state")),
         @AttributeOverride(name = "zip", column = @Column(name = "pickup_zip")),
-        @AttributeOverride(name = "country", column = @Column(name = "pickup_country"))
+        @AttributeOverride(name = "country", column = @Column(name = "pickup_country")),
+        @AttributeOverride(name = "lotNumber", column = @Column(name = "pickup_lot_number"))
     })
-    private Address pickupAddress;
+    private LoadAddress pickupAddress;
+
+    /**
+     * Drop/delivery address for the load.
+     */
+    @Embedded
+    @AttributeOverrides({
+        @AttributeOverride(name = "street", column = @Column(name = "drop_street")),
+        @AttributeOverride(name = "city", column = @Column(name = "drop_city")),
+        @AttributeOverride(name = "state", column = @Column(name = "drop_state")),
+        @AttributeOverride(name = "zip", column = @Column(name = "drop_zip")),
+        @AttributeOverride(name = "country", column = @Column(name = "drop_country")),
+        @AttributeOverride(name = "lotNumber", column = @Column(name = "drop_lot_number"))
+    })
+    private LoadAddress dropAddress;
 
     @Embedded
     @AttributeOverrides({
-        @AttributeOverride(name = "street", column = @Column(name = "delivery_street")),
-        @AttributeOverride(name = "city", column = @Column(name = "delivery_city")),
-        @AttributeOverride(name = "state", column = @Column(name = "delivery_state")),
-        @AttributeOverride(name = "zip", column = @Column(name = "delivery_zip")),
-        @AttributeOverride(name = "country", column = @Column(name = "delivery_country"))
+        @AttributeOverride(name = "make", column = @Column(name = "vehicle_make")),
+        @AttributeOverride(name = "model", column = @Column(name = "vehicle_model")),
+        @AttributeOverride(name = "year", column = @Column(name = "vehicle_year"))
     })
-    private Address deliveryAddress;
+    private VehicleInfo vehicle;
 
     private String description;
     private Double weight;

@@ -73,6 +73,8 @@ public class RegistrationService {
         user.setPasswordHash(passwordEncoder.encode(req.password()));
         user.setRole(UserRole.ROLE_CARRIER);
         user.setCarrier(carrier);
+    user.setEmailVerified(true);
+    user.setEmailVerifiedAt(java.time.LocalDateTime.now());
 
         userRepository.save(user);
         log.info("RegisterCarrier success email={} userId={} carrierId={}", user.getEmail(), user.getId(), carrier.getId());
@@ -131,6 +133,8 @@ public class RegistrationService {
             user.setPasswordHash(passwordEncoder.encode(password));
             user.setRole(UserRole.ROLE_CARRIER);
             user.setCarrier(carrier);
+            user.setEmailVerified(true);
+            user.setEmailVerifiedAt(java.time.LocalDateTime.now());
 
         userRepository.save(user);
         log.info("RegisterCarrierFromValidation success validationId={} email={} userId={} carrierId={} cacheEvicted={}", validationId, user.getEmail(), user.getId(), carrier.getId(), usedCache);
@@ -178,6 +182,8 @@ public class RegistrationService {
         user.setPasswordHash(passwordEncoder.encode(password));
         user.setRole(UserRole.ROLE_BROKER);
         user.setBroker(broker);
+    user.setEmailVerified(true);
+    user.setEmailVerifiedAt(java.time.LocalDateTime.now());
 
         userRepository.save(user);
         log.info("RegisterBrokerFromValidation success validationId={} email={} userId={} brokerId={}", validationId, user.getEmail(), user.getId(), broker.getId());
@@ -205,6 +211,8 @@ public class RegistrationService {
         user.setPasswordHash(passwordEncoder.encode(req.password()));
         user.setRole(UserRole.ROLE_BROKER);
         user.setBroker(broker);
+    user.setEmailVerified(true);
+    user.setEmailVerifiedAt(java.time.LocalDateTime.now());
 
     userRepository.save(user);
     log.info("RegisterBroker success email={} userId={} brokerId={}", user.getEmail(), user.getId(), broker.getId());
@@ -239,6 +247,8 @@ public class RegistrationService {
         user.setPasswordHash(passwordEncoder.encode(req.password()));
         user.setRole(UserRole.ROLE_CARRIER);
         user.setCarrier(carrier);
+    user.setEmailVerified(true);
+    user.setEmailVerifiedAt(java.time.LocalDateTime.now());
 
         userRepository.save(user);
         log.info("RegisterCarrierWithPreview success email={} userId={} carrierId={}", user.getEmail(), user.getId(), carrier.getId());
@@ -263,6 +273,8 @@ public class RegistrationService {
         user.setPasswordHash(passwordEncoder.encode(req.password()));
         user.setRole(UserRole.ROLE_BROKER);
         user.setBroker(broker);
+    user.setEmailVerified(true);
+    user.setEmailVerifiedAt(java.time.LocalDateTime.now());
 
         userRepository.save(user);
         log.info("RegisterBrokerWithPreview success email={} userId={} brokerId={}", user.getEmail(), user.getId(), broker.getId());
@@ -293,6 +305,8 @@ public class RegistrationService {
         admin.setEmail(request.getEmail());
         admin.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         admin.setRole(UserRole.ROLE_ADMIN);
+    admin.setEmailVerified(true);
+    admin.setEmailVerifiedAt(java.time.LocalDateTime.now());
 
         User savedAdmin = userRepository.save(admin);
         log.info("Admin registered successfully email={} userId={}", request.getEmail(), savedAdmin.getId());

@@ -15,10 +15,10 @@ public class LoadService {
         // TODO: implement persistence and real mapping once load entity is defined
         return new LoadResponseDto(
                 null,
-                request.originAddresses(),
-                request.destinationAddresses(),
-                request.pickupDate(),
-                request.rate(),
+                null, // originAddresses - will use pickup address
+                null, // destinationAddresses - will use delivery address
+                null, // pickupDate
+                null, // rate - will use price
                 "NEW"
         );
     }

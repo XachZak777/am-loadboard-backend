@@ -1,13 +1,12 @@
 package am.loadboardbackend.service;
 
 import am.loadboardbackend.client.FmcsaClient;
-import am.loadboardbackend.dto.CarrierLookupType;
+import am.loadboardbackend.dto.carrier.CarrierLookupType;
 import am.loadboardbackend.dto.fmcsa.FmcsaCarrierResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 import am.loadboardbackend.service.validation.CarrierValidationResult;
 import am.loadboardbackend.service.validation.ValidationPayload;
-import am.loadboardbackend.service.TemporaryValidationStore;
 import am.loadboardbackend.model.CarrierValidation;
 import am.loadboardbackend.repository.CarrierValidationRepository;
 import am.loadboardbackend.dto.validation.LookupResponse;

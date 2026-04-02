@@ -1,6 +1,6 @@
 package am.loadboardbackend.service.validation;
 
-import am.loadboardbackend.dto.CarrierLookupType;
+import am.loadboardbackend.dto.carrier.CarrierLookupType;
 
 public class ValidationPayload {
 

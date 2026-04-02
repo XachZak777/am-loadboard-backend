@@ -1,7 +1,7 @@
 package am.loadboardbackend.controller;
 
-import am.loadboardbackend.dto.CreateLoadRequest;
-import am.loadboardbackend.dto.LoadPostingDto;
+import am.loadboardbackend.dto.load.CreateLoadRequest;
+import am.loadboardbackend.dto.load.LoadPostingDto;
 import am.loadboardbackend.service.LoadPostingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;

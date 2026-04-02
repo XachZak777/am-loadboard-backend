@@ -1,7 +1,7 @@
 package am.loadboardbackend.service;
 
 import am.loadboardbackend.client.FmcsaClient;
-import am.loadboardbackend.dto.CarrierLookupType;
+import am.loadboardbackend.dto.carrier.CarrierLookupType;
 import am.loadboardbackend.dto.fmcsa.FmcsaCarrier;
 import am.loadboardbackend.dto.fmcsa.FmcsaCarrierResponse;
 import am.loadboardbackend.dto.fmcsa.FmcsaContent;

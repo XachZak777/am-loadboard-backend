@@ -1,6 +1,6 @@
 package am.loadboardbackend.service;
 
-import am.loadboardbackend.dto.LoadPostingDto;
+import am.loadboardbackend.dto.load.LoadPostingDto;
 import am.loadboardbackend.model.*;
 import am.loadboardbackend.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -122,23 +122,38 @@ public class AdminService {
         load.setWeight(dto.getWeight());
         load.setPrice(dto.getPrice());
 
-        // Create pickup address
-        Address pickupAddress = new Address();
+        if (dto.getPickupType() != null) {
+            load.setPickupType(PickupType.valueOf(dto.getPickupType()));
+        }
+        if (dto.getDropType() != null) {
+            load.setDropType(DropType.valueOf(dto.getDropType()));
+        }
+
+    // Create pickup address
+    LoadAddress pickupAddress = new LoadAddress();
         pickupAddress.setStreet(dto.getPickupStreet());
         pickupAddress.setCity(dto.getPickupCity());
         pickupAddress.setState(dto.getPickupState());
         pickupAddress.setZip(dto.getPickupZip());
         pickupAddress.setCountry(dto.getPickupCountry());
+    pickupAddress.setLotNumber(dto.getPickupLotNumber());
         load.setPickupAddress(pickupAddress);
 
-        // Create delivery address
-        Address deliveryAddress = new Address();
-        deliveryAddress.setStreet(dto.getDeliveryStreet());
-        deliveryAddress.setCity(dto.getDeliveryCity());
-        deliveryAddress.setState(dto.getDeliveryState());
-        deliveryAddress.setZip(dto.getDeliveryZip());
-        deliveryAddress.setCountry(dto.getDeliveryCountry());
-        load.setDeliveryAddress(deliveryAddress);
+    // Create drop address
+    LoadAddress dropAddress = new LoadAddress();
+    dropAddress.setStreet(dto.getDropStreet());
+    dropAddress.setCity(dto.getDropCity());
+    dropAddress.setState(dto.getDropState());
+    dropAddress.setZip(dto.getDropZip());
+    dropAddress.setCountry(dto.getDropCountry());
+    dropAddress.setLotNumber(dto.getDropLotNumber());
+    load.setDropAddress(dropAddress);
+
+    VehicleInfo vehicle = new VehicleInfo();
+    vehicle.setMake(dto.getVehicleMake());
+    vehicle.setModel(dto.getVehicleModel());
+    vehicle.setYear(dto.getVehicleYear());
+    load.setVehicle(vehicle);
 
         LoadPosting saved = loadPostingRepository.save(load);
 
@@ -165,25 +180,41 @@ public class AdminService {
         load.setWeight(dto.getWeight());
         load.setPrice(dto.getPrice());
 
+        if (dto.getPickupType() != null) {
+            load.setPickupType(PickupType.valueOf(dto.getPickupType()));
+        }
+        if (dto.getDropType() != null) {
+            load.setDropType(DropType.valueOf(dto.getDropType()));
+        }
+
         // Update pickup address
         if (load.getPickupAddress() == null) {
-            load.setPickupAddress(new Address());
+            load.setPickupAddress(new LoadAddress());
         }
         load.getPickupAddress().setStreet(dto.getPickupStreet());
         load.getPickupAddress().setCity(dto.getPickupCity());
         load.getPickupAddress().setState(dto.getPickupState());
         load.getPickupAddress().setZip(dto.getPickupZip());
         load.getPickupAddress().setCountry(dto.getPickupCountry());
+        load.getPickupAddress().setLotNumber(dto.getPickupLotNumber());
 
-        // Update delivery address
-        if (load.getDeliveryAddress() == null) {
-            load.setDeliveryAddress(new Address());
+        // Update drop address
+        if (load.getDropAddress() == null) {
+            load.setDropAddress(new LoadAddress());
         }
-        load.getDeliveryAddress().setStreet(dto.getDeliveryStreet());
-        load.getDeliveryAddress().setCity(dto.getDeliveryCity());
-        load.getDeliveryAddress().setState(dto.getDeliveryState());
-        load.getDeliveryAddress().setZip(dto.getDeliveryZip());
-        load.getDeliveryAddress().setCountry(dto.getDeliveryCountry());
+        load.getDropAddress().setStreet(dto.getDropStreet());
+        load.getDropAddress().setCity(dto.getDropCity());
+        load.getDropAddress().setState(dto.getDropState());
+        load.getDropAddress().setZip(dto.getDropZip());
+        load.getDropAddress().setCountry(dto.getDropCountry());
+        load.getDropAddress().setLotNumber(dto.getDropLotNumber());
+
+        if (load.getVehicle() == null) {
+            load.setVehicle(new VehicleInfo());
+        }
+        load.getVehicle().setMake(dto.getVehicleMake());
+        load.getVehicle().setModel(dto.getVehicleModel());
+        load.getVehicle().setYear(dto.getVehicleYear());
 
         LoadPosting updated = loadPostingRepository.save(load);
 

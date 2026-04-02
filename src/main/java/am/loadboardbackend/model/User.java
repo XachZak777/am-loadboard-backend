@@ -32,6 +32,15 @@ public class User {
     @Column(nullable = false)
     private String passwordHash;
 
+    /**
+     * Whether the user's email is verified. This is used to gate sensitive flows
+     * like password reset.
+     */
+    @Column(nullable = false)
+    private boolean emailVerified = false;
+
+    private LocalDateTime emailVerifiedAt;
+
     private LocalDateTime createdAt;
 
     @PrePersist
