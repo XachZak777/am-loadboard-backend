@@ -75,11 +75,17 @@ public class RegistrationService {
         user.setCarrier(carrier);
     user.setEmailVerified(true);
     user.setEmailVerifiedAt(java.time.LocalDateTime.now());
+        user.setAdminApproved(false);
 
         userRepository.save(user);
         log.info("RegisterCarrier success email={} userId={} carrierId={}", user.getEmail(), user.getId(), carrier.getId());
 
-        return new LoginResponse(jwtUtil.generateToken(user));
+    return new LoginResponse(
+        jwtUtil.generateToken(user),
+        user.getId().toString(),
+        user.getEmail(),
+        user.getRole() != null ? user.getRole().name().replace("ROLE_", "") : null
+    );
     }
 
     @Transactional
@@ -135,11 +141,17 @@ public class RegistrationService {
             user.setCarrier(carrier);
             user.setEmailVerified(true);
             user.setEmailVerifiedAt(java.time.LocalDateTime.now());
+            user.setAdminApproved(false);
 
         userRepository.save(user);
         log.info("RegisterCarrierFromValidation success validationId={} email={} userId={} carrierId={} cacheEvicted={}", validationId, user.getEmail(), user.getId(), carrier.getId(), usedCache);
 
-        return new LoginResponse(jwtUtil.generateToken(user));
+    return new LoginResponse(
+        jwtUtil.generateToken(user),
+        user.getId().toString(),
+        user.getEmail(),
+        user.getRole() != null ? user.getRole().name().replace("ROLE_", "") : null
+    );
     }
 
     @Transactional
@@ -184,11 +196,17 @@ public class RegistrationService {
         user.setBroker(broker);
     user.setEmailVerified(true);
     user.setEmailVerifiedAt(java.time.LocalDateTime.now());
+        user.setAdminApproved(false);
 
         userRepository.save(user);
         log.info("RegisterBrokerFromValidation success validationId={} email={} userId={} brokerId={}", validationId, user.getEmail(), user.getId(), broker.getId());
 
-        return new LoginResponse(jwtUtil.generateToken(user));
+    return new LoginResponse(
+        jwtUtil.generateToken(user),
+        user.getId().toString(),
+        user.getEmail(),
+        user.getRole() != null ? user.getRole().name().replace("ROLE_", "") : null
+    );
     }
 
     @Transactional
@@ -213,13 +231,17 @@ public class RegistrationService {
         user.setBroker(broker);
     user.setEmailVerified(true);
     user.setEmailVerifiedAt(java.time.LocalDateTime.now());
+    user.setAdminApproved(false);
 
     userRepository.save(user);
     log.info("RegisterBroker success email={} userId={} brokerId={}", user.getEmail(), user.getId(), broker.getId());
 
-    return new LoginResponse(
-        jwtUtil.generateToken(user)
-    );
+        return new LoginResponse(
+                jwtUtil.generateToken(user),
+                user.getId().toString(),
+                user.getEmail(),
+                user.getRole() != null ? user.getRole().name().replace("ROLE_", "") : null
+        );
     }
 
     @Transactional
@@ -249,11 +271,17 @@ public class RegistrationService {
         user.setCarrier(carrier);
     user.setEmailVerified(true);
     user.setEmailVerifiedAt(java.time.LocalDateTime.now());
+        user.setAdminApproved(false);
 
         userRepository.save(user);
         log.info("RegisterCarrierWithPreview success email={} userId={} carrierId={}", user.getEmail(), user.getId(), carrier.getId());
 
-        return new LoginResponse(jwtUtil.generateToken(user));
+    return new LoginResponse(
+        jwtUtil.generateToken(user),
+        user.getId().toString(),
+        user.getEmail(),
+        user.getRole() != null ? user.getRole().name().replace("ROLE_", "") : null
+    );
     }
 
     @Transactional
@@ -275,11 +303,17 @@ public class RegistrationService {
         user.setBroker(broker);
     user.setEmailVerified(true);
     user.setEmailVerifiedAt(java.time.LocalDateTime.now());
+        user.setAdminApproved(false);
 
         userRepository.save(user);
         log.info("RegisterBrokerWithPreview success email={} userId={} brokerId={}", user.getEmail(), user.getId(), broker.getId());
 
-        return new LoginResponse(jwtUtil.generateToken(user));
+    return new LoginResponse(
+        jwtUtil.generateToken(user),
+        user.getId().toString(),
+        user.getEmail(),
+        user.getRole() != null ? user.getRole().name().replace("ROLE_", "") : null
+    );
     }
 
     @Transactional
@@ -307,10 +341,17 @@ public class RegistrationService {
         admin.setRole(UserRole.ROLE_ADMIN);
     admin.setEmailVerified(true);
     admin.setEmailVerifiedAt(java.time.LocalDateTime.now());
+        admin.setAdminApproved(true);
+        admin.setAdminApprovedAt(java.time.LocalDateTime.now());
 
         User savedAdmin = userRepository.save(admin);
         log.info("Admin registered successfully email={} userId={}", request.getEmail(), savedAdmin.getId());
 
-        return new LoginResponse(jwtUtil.generateToken(savedAdmin));
+    return new LoginResponse(
+        jwtUtil.generateToken(savedAdmin),
+        savedAdmin.getId().toString(),
+        savedAdmin.getEmail(),
+        savedAdmin.getRole() != null ? savedAdmin.getRole().name().replace("ROLE_", "") : null
+    );
     }
 }

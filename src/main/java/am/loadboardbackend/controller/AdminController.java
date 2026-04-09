@@ -5,7 +5,9 @@ import am.loadboardbackend.model.AuditLog;
 import am.loadboardbackend.model.Broker;
 import am.loadboardbackend.model.Carrier;
 import am.loadboardbackend.model.LoadPosting;
+import am.loadboardbackend.model.User;
 import am.loadboardbackend.service.AdminService;
+import am.loadboardbackend.service.UserApprovalService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -24,6 +26,7 @@ import java.util.UUID;
 public class AdminController {
 
     private final AdminService adminService;
+    private final UserApprovalService userApprovalService;
 
     // Carrier endpoints
     @GetMapping("/carriers")
@@ -57,6 +60,17 @@ public class AdminController {
     public ResponseEntity<Void> deleteBroker(@PathVariable UUID id) {
         adminService.deleteBroker(id);
         return ResponseEntity.noContent().build();
+    }
+
+    // User approval endpoints
+    @PostMapping("/users/{id}/approve")
+    public ResponseEntity<User> approveUser(@PathVariable UUID id) {
+        return ResponseEntity.ok(userApprovalService.approveUser(id));
+    }
+
+    @PostMapping("/users/{id}/reject")
+    public ResponseEntity<User> rejectUser(@PathVariable UUID id) {
+        return ResponseEntity.ok(userApprovalService.rejectUser(id));
     }
 
     // User history endpoints

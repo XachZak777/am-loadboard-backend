@@ -23,6 +23,7 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtFilter;
+        private final AdminApprovalFilter adminApprovalFilter;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -35,7 +36,9 @@ public class SecurityConfig {
                                 "/api/validate/**",
                                 "/api/auth/**",
                                 "/api/carriers/register",
-                                "/api/brokers/register"
+                                "/api/brokers/register",
+                                "/api/auth/login",
+                                "/api/auth/register"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
@@ -43,7 +46,8 @@ public class SecurityConfig {
                         sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .addFilterBefore(jwtFilter,
-                        UsernamePasswordAuthenticationFilter.class);
+                        UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(adminApprovalFilter, JwtAuthenticationFilter.class);
 
         return http.build();
     }

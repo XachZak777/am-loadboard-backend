@@ -2,6 +2,61 @@ FE integration notes — Loadboard Backend
 
 This document summarizes the new load/bid/booking flows and the HTTP endpoints the frontend should use. It assumes the frontend obtains a JWT token from /api/auth/login and includes it as Authorization: Bearer <token>.
 
+## Admin Account Setup
+
+### Creating the First Admin (Bootstrap)
+When the system is first deployed, there are no admins yet. Use the bootstrap endpoint to create the first admin account:
+
+```
+POST /api/auth/register-admin
+Content-Type: application/json
+
+{
+  "email": "admin@loadboard.com",
+  "password": "SecureAdminPassword123!"
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+Save the returned JWT token — use it to access the admin dashboard and authenticated endpoints. You can now log in to the admin dashboard with these credentials.
+
+### Creating Additional Admins
+Once the first admin exists, only that admin (or other admins) can create new admin accounts:
+
+```
+POST /api/auth/register-admin
+Authorization: Bearer {{admin_token}}
+Content-Type: application/json
+
+{
+  "email": "newadmin@loadboard.com",
+  "password": "AnotherSecurePassword!"
+}
+```
+
+### Admin Login
+Use the standard login endpoint with admin credentials:
+
+```
+POST /api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@loadboard.com",
+  "password": "SecureAdminPassword123!"
+}
+```
+
+The response will include a JWT token that can be used for authenticated requests.
+
+---
+
 Key concepts and states
 - LoadPosting.status: OPEN | ASSIGNED | CANCELLED | COMPLETED
   - OPEN: visible on the public board and available for bids
@@ -102,3 +157,65 @@ Stripe subscription notes
 Next step options (Stripe)
 - I can add a Stripe webhook endpoint (/api/stripe/webhook) to process Checkout Session completed events and mark subscriptions active automatically.
 - I can also store Stripe customer IDs on the `Carrier` model and persist subscription records for future billing and cancellations.
+
+Admin Dashboard & Management
+-----------
+Admins have elevated access to the system and can:
+- View all carriers and brokers
+- Delete carriers and brokers (and their associated users)
+- View audit logs of all user actions
+- Create, edit, and delete loads on behalf of any broker
+- Monitor all activities in the system via audit trail
+
+### Admin Endpoints
+
+All admin endpoints require `Authorization: Bearer <admin-token>` header and user must have ROLE_ADMIN.
+
+#### Carriers
+- `GET /api/admin/carriers` - List all carriers with full details
+- `GET /api/admin/carriers/{id}` - Get specific carrier
+- `DELETE /api/admin/carriers/{id}` - Delete carrier and associated user
+
+#### Brokers
+- `GET /api/admin/brokers` - List all brokers with full details
+- `GET /api/admin/brokers/{id}` - Get specific broker
+- `DELETE /api/admin/brokers/{id}` - Delete broker and associated user
+
+#### User History & Audit Logs
+- `GET /api/admin/users/{id}/history` - Get all actions performed by a user
+- `GET /api/admin/entities/{id}/history` - Get all changes to a specific entity (load, carrier, broker, etc.)
+
+#### Load Management (Admin can manage any load)
+- `GET /api/admin/loads` - List all loads across all brokers
+- `GET /api/admin/loads/{id}` - Get specific load details
+- `POST /api/admin/loads/{brokerId}` - Create load for specified broker
+  - Payload: LoadPostingDto with all address and shipment details
+- `PUT /api/admin/loads/{id}` - Update load details (price, weight, description, addresses)
+- `DELETE /api/admin/loads/{id}` - Delete load (removes from board)
+
+### Admin Workflow Example
+1. Admin logs in with ROLE_ADMIN credentials
+2. Admin dashboard loads and shows three main sections: Carriers, Brokers, Loads
+3. Admin can view all carriers/brokers with their metadata and click to see details
+4. Admin can delete problematic users by clicking a delete button (triggers audit log)
+5. Admin can create test loads for brokers to verify bidding flows
+6. Admin can view audit trail for any entity to debug issues
+7. All admin actions (create/update/delete) are logged automatically
+
+### Frontend Implementation for Admin
+- Add an "Admin Dashboard" link in navigation visible only to ROLE_ADMIN users
+- Create three main pages/sections:
+  - **Carriers**: List with edit/delete actions, click to view details and audit history
+  - **Brokers**: List with edit/delete actions, click to view details and audit history
+  - **Loads**: List all loads with create/edit/delete actions, show assigned status and broker
+- Add ability to create test loads for any broker (useful for feature testing)
+- Show audit logs in a modal/panel when viewing a user/entity
+- Use pagination for large lists (GET requests don't support limit/offset yet, but can be added)
+
+### Testing with Admin Account
+For development/testing, admins can:
+1. Create test loads for any broker without needing to switch accounts
+2. Delete test data (carriers, brokers, loads) easily
+3. Verify carrier bidding flows by creating loads and viewing bid history
+4. Check audit logs to debug user action flows
+5. Test cancellation and reassignment by creating/updating loads directly

@@ -1,7 +1,6 @@
 package am.loadboardbackend.exception;
 
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import am.loadboardbackend.dto.ErrorResponse;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -9,29 +8,30 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.http.converter.HttpMessageNotWritableException;
 import org.springframework.web.HttpMediaTypeNotAcceptableException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(RuntimeException.class)
-    public ResponseEntity<ErrorResponse> handleRuntime(RuntimeException ex) {
-
-        // If caller already uses ResponseStatusException, preserve its status & reason
-        if (ex instanceof org.springframework.web.server.ResponseStatusException rse) {
-            ErrorResponse body = new ErrorResponse(
-                    LocalDateTime.now().toString(),
-                    rse.getStatusCode().value(),
-                    rse.getReason(),
-                    rse.getReason() == null ? rse.getMessage() : rse.getReason()
-            );
-            return ResponseEntity
-                    .status(rse.getStatusCode())
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(body);
+        @ExceptionHandler(ResponseStatusException.class)
+        @org.springframework.web.bind.annotation.ResponseBody
+        public ResponseEntity<ErrorResponse> handleResponseStatus(ResponseStatusException ex) {
+                ErrorResponse body = new ErrorResponse(
+                                LocalDateTime.now().toString(),
+                                ex.getStatusCode().value(),
+                                ex.getReason(),
+                                ex.getReason() == null ? ex.getMessage() : ex.getReason()
+                );
+                return ResponseEntity
+                                .status(ex.getStatusCode())
+                                .body(body);
         }
 
+    @ExceptionHandler(RuntimeException.class)
+    @org.springframework.web.bind.annotation.ResponseBody
+    public ResponseEntity<ErrorResponse> handleRuntime(RuntimeException ex) {
         HttpStatus status = mapStatus(ex.getMessage());
 
         ErrorResponse body = new ErrorResponse(
@@ -43,7 +43,19 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity
                 .status(status)
-                .contentType(MediaType.APPLICATION_JSON)
+                .body(body);
+    }
+
+    @ExceptionHandler(Exception.class)
+    @org.springframework.web.bind.annotation.ResponseBody
+    public ResponseEntity<ErrorResponse> handleAny(Exception ex) {
+        ErrorResponse body = new ErrorResponse(
+                LocalDateTime.now().toString(),
+                HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                "INTERNAL_SERVER_ERROR",
+                ex.getMessage() == null ? "Unexpected error" : ex.getMessage()
+        );
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(body);
     }
 
@@ -56,7 +68,6 @@ public class GlobalExceptionHandler {
                 ex.getMessage()
         );
         return ResponseEntity.status(org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR)
-                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
                 .body(body);
     }
 
@@ -69,7 +80,6 @@ public class GlobalExceptionHandler {
                 "Resource was modified by another process; please retry"
         );
         return ResponseEntity.status(org.springframework.http.HttpStatus.CONFLICT)
-                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
                 .body(body);
     }
 

@@ -41,11 +41,16 @@ CREATE TABLE users (
         carrier_id UUID REFERENCES carriers(id),
         broker_id UUID REFERENCES brokers(id),
 
+        role TEXT,
+
         email TEXT UNIQUE NOT NULL,
         password_hash TEXT NOT NULL,
 
         email_verified BOOLEAN NOT NULL DEFAULT FALSE,
         email_verified_at TIMESTAMP,
+
+        admin_approved BOOLEAN NOT NULL DEFAULT FALSE,
+        admin_approved_at TIMESTAMP,
 
         created_at TIMESTAMP DEFAULT now()
 );
