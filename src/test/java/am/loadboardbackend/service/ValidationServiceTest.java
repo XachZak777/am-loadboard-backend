@@ -10,8 +10,6 @@ import am.loadboardbackend.dto.validation.LookupResponse;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-import java.util.List;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class ValidationServiceTest {
