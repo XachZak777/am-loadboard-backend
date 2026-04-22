@@ -3,6 +3,7 @@ package am.loadboardbackend.model;
 import jakarta.persistence.*;
 import lombok.Data;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -75,6 +76,12 @@ public class LoadPosting {
     private String description;
     private Double weight;
     private Double price;
+
+    @Column(name = "pickup_date")
+    private LocalDate pickupDate;
+
+    @Column(name = "delivery_date")
+    private LocalDate deliveryDate;
 
     private LocalDateTime createdAt;
 

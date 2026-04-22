@@ -2,9 +2,8 @@ package am.loadboardbackend.dto.fmcsa;
 
 import lombok.Data;
 
-import java.util.List;
-
 @Data
 public class FmcsaCarrierResponse {
-    private List<FmcsaContent> content;
+    /** The FMCSA REST API wraps the single carrier inside {@code content}, not an array. */
+    private FmcsaContent content;
 }

@@ -2,6 +2,7 @@ package am.loadboardbackend.controller;
 
 import am.loadboardbackend.dto.load.CreateLoadRequest;
 import am.loadboardbackend.dto.load.LoadPostingDto;
+import am.loadboardbackend.dto.load.CarrierBidWithLoadDto;
 import am.loadboardbackend.service.LoadPostingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -68,5 +69,14 @@ public class LoadPostingController {
     public ResponseEntity<Void> cancelBooking(@PathVariable java.util.UUID id) {
         loadService.cancelBooking(id);
         return ResponseEntity.ok().build();
+    }
+
+    /**
+     * GET /api/loads/carrier/my-bids — returns all bids placed by the
+     * currently authenticated carrier, each with embedded load details.
+     */
+    @GetMapping("/carrier/my-bids")
+    public ResponseEntity<List<CarrierBidWithLoadDto>> myBids() {
+        return ResponseEntity.ok(loadService.getMyCarrierBids());
     }
 }

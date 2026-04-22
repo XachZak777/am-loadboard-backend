@@ -25,4 +25,10 @@ public class BrokerService {
                 b.isBrokerAuthorityActive()
         );
     }
+
+    public Broker getEntity(UUID brokerId) {
+        return repo.findById(brokerId)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "Broker not found"));
+    }
 }

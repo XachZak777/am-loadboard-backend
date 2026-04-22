@@ -1,14 +1,25 @@
 package am.loadboardbackend.controller;
 
+import am.loadboardbackend.dto.carrier.CarrierProfileRequest;
+import am.loadboardbackend.dto.carrier.CarrierPublicDto;
 import am.loadboardbackend.dto.carrier.CarrierResponseDto;
 import am.loadboardbackend.dto.auth.LoginResponse;
 import am.loadboardbackend.dto.auth.RegisterCarrierRequest;
+import am.loadboardbackend.dto.document.DocumentUploadResponse;
+import am.loadboardbackend.model.Carrier;
 import am.loadboardbackend.model.User;
+import am.loadboardbackend.service.CarrierProfileService;
 import am.loadboardbackend.service.CarrierService;
+import am.loadboardbackend.service.DocumentStorageService;
 import am.loadboardbackend.service.RegistrationService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/carriers")
@@ -17,6 +28,8 @@ public class CarrierController {
 
     private final RegistrationService registrationService;
     private final CarrierService carrierService;
+    private final CarrierProfileService carrierProfileService;
+    private final DocumentStorageService documentStorageService;
 
     @PostMapping("/register")
     public LoginResponse register(@RequestBody RegisterCarrierRequest request) {
@@ -40,4 +53,90 @@ public class CarrierController {
         }
         return carrierService.getMyCarrier(user.getCarrier().getId());
     }
+
+    /**
+     * GET /api/carriers/{carrierId}/public — returns basic carrier info
+     * for authenticated brokers reviewing bids. No sensitive data exposed.
+     */
+    @GetMapping("/{carrierId}/public")
+    public ResponseEntity<CarrierPublicDto> getPublicInfo(@PathVariable UUID carrierId) {
+        Carrier c = carrierService.getEntity(carrierId);
+        return ResponseEntity.ok(new CarrierPublicDto(
+                c.getDotNumber(),
+                c.getMcNumber(),
+                c.getLegalName(),
+                c.getDbaName(),
+                c.getCompanyName(),
+                c.getOperatingStatus(),
+                c.getSafetyRating(),
+                c.getPhyCity(),
+                c.getPhyState(),
+                c.getTotalPowerUnits(),
+                c.getPhoneNumber()
+        ));
+    }
+
+    /**
+     * PATCH /api/carriers/profile — update (or create) carrier profile fields.
+     * Sets adminApproved=false until the admin reviews the submission.
+     */
+    @PatchMapping("/profile")
+    public ResponseEntity<Map<String, String>> updateProfile(
+            @AuthenticationPrincipal User user,
+            @RequestBody CarrierProfileRequest request) {
+        carrierProfileService.updateProfile(user, request);
+        return ResponseEntity.ok(Map.of("message", "Profile updated successfully"));
+    }
+
+    /**
+     * POST /api/carriers/documents/w9 — upload W9 document (PDF/DOC/DOCX, max 5MB).
+     */
+    @PostMapping("/documents/w9")
+    public ResponseEntity<DocumentUploadResponse> uploadW9(
+            @AuthenticationPrincipal User user,
+            @RequestParam("file") MultipartFile file) {
+        if (user.getCarrier() == null) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST,
+                    "Complete carrier profile before uploading documents");
+        }
+        DocumentUploadResponse response = documentStorageService.storeW9(
+                file, user.getCarrier().getId(), "CARRIER");
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * POST /api/carriers/documents/insurance — upload Insurance Certificate (PDF/DOC/DOCX, max 5MB).
+     */
+    @PostMapping("/documents/insurance")
+    public ResponseEntity<DocumentUploadResponse> uploadInsurance(
+            @AuthenticationPrincipal User user,
+            @RequestParam("file") MultipartFile file) {
+        if (user.getCarrier() == null) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST,
+                    "Complete carrier profile before uploading documents");
+        }
+        DocumentUploadResponse response = documentStorageService.storeInsurance(
+                file, user.getCarrier().getId(), "CARRIER");
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * POST /api/carriers/documents/mc-authority — upload MC Authority document (PDF/DOC/DOCX, max 5MB).
+     */
+    @PostMapping("/documents/mc-authority")
+    public ResponseEntity<DocumentUploadResponse> uploadMcAuthority(
+            @AuthenticationPrincipal User user,
+            @RequestParam("file") MultipartFile file) {
+        if (user.getCarrier() == null) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST,
+                    "Complete carrier profile before uploading documents");
+        }
+        DocumentUploadResponse response = documentStorageService.storeMcAuthority(
+                file, user.getCarrier().getId(), "CARRIER");
+        return ResponseEntity.ok(response);
+    }
 }
+

@@ -2,6 +2,7 @@ package am.loadboardbackend.dto.load;
 
 import lombok.Data;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -33,7 +34,10 @@ public class LoadPostingDto {
     private String description;
     private Double weight;
     private Double price;
+    private LocalDate pickupDate;
+    private LocalDate deliveryDate;
     private LocalDateTime createdAt;
+    private UUID brokerId;
     private UUID carrierId;
     private UUID assignedCarrierId;
     private String status;

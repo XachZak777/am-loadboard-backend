@@ -32,107 +32,111 @@ public class CarrierValidationService {
                         ? fmcsaClient.fetchByDot(value)
                         : fmcsaClient.fetchByMc(value);
 
-        if (response == null ||
-                response.getContent() == null ||
-                response.getContent().isEmpty()) {
+        if (response == null || response.getContent() == null || response.getContent().getCarrier() == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Carrier not found in FMCSA");
         }
 
-        CarrierValidationResult result = CarrierValidationResult.from(response);
+        CarrierValidationResult r = CarrierValidationResult.from(response);
 
-    ValidationPayload payload = new ValidationPayload(
-                value,
-                type,
-                result.getDotNumber(),
-                result.getMcNumber(),
-                result.getLegalName(),
-                result.getDbaName(),
-                result.getOperatingStatus(),
-                result.getAllowedToOperate(),
-                result.getPhyStreet(),
-                result.getPhyCity(),
-                result.getPhyState(),
-                result.getPhyZip(),
-                result.getPhyCountry(),
-                result.getTotalDrivers(),
-                result.getTotalPowerUnits(),
-                null
+        // Canonical MC: prefer parsed value; fall back to lookup value when lookup was MC
+        String mcToCache = r.getMcNumber() != null ? r.getMcNumber()
+                         : (type == CarrierLookupType.MC ? value : null);
+
+        ValidationPayload payload = new ValidationPayload(
+                value, type,
+                r.getDotNumber(), mcToCache,
+                r.getLegalName(), r.getDbaName(), r.getEntityType(),
+                r.getOperatingStatus(), r.getAllowedToOperate(),
+                r.getOutOfServiceDate(), r.getLatestUpdate(),
+                r.getPhyStreet(), r.getPhyCity(), r.getPhyState(), r.getPhyZip(), r.getPhyCountry(),
+                r.getMailingStreet(), r.getMailingCity(), r.getMailingState(), r.getMailingZip(), r.getMailingCountry(),
+                r.getPhone(), r.getTotalDrivers(), r.getTotalPowerUnits(),
+                r.getOperationClassification(), r.getCarrierOperation(), r.getCargoCarried(),
+                r.getMcs150Date(), r.getMcs150Mileage(), r.getMcs150Year(),
+                r.getSafetyRating(), r.getSafetyRatingDate(), r.getSafetyReviewDate(), r.getSafetyType(),
+                r.getUsInspections(), r.getCanadaInspections(),
+                r.getUsCrashes(), r.getCanadaCrashes(),
+                null   // brokerAuthorityActive — not applicable to carriers
         );
 
-    // We'll let JPA generate the DB id when saving; compute cache id from saved entity
+        // Persist to carrier_validations for cache-miss fallback
+        CarrierValidation cv = new CarrierValidation();
+        cv.setLookupValue(value);
+        cv.setLookupType(type);
+        cv.setDotNumber(payload.dotNumber);
+        cv.setMcNumber(mcToCache);
+        cv.setLegalName(payload.legalName);
+        cv.setDbaName(payload.dbaName);
+        cv.setEntityType(payload.entityType);
+        cv.setOperatingStatus(payload.operatingStatus);
+        cv.setAllowedToOperate(payload.allowedToOperate);
+        cv.setOutOfServiceDate(payload.outOfServiceDate);
+        cv.setLatestUpdate(payload.latestUpdate);
+        cv.setPhyStreet(payload.phyStreet);
+        cv.setPhyCity(payload.phyCity);
+        cv.setPhyState(payload.phyState);
+        cv.setPhyZip(payload.phyZip);
+        cv.setPhyCountry(payload.phyCountry);
+        cv.setMailingStreet(payload.mailingStreet);
+        cv.setMailingCity(payload.mailingCity);
+        cv.setMailingState(payload.mailingState);
+        cv.setMailingZip(payload.mailingZip);
+        cv.setMailingCountry(payload.mailingCountry);
+        cv.setPhone(payload.phone);
+        cv.setTotalDrivers(payload.totalDrivers);
+        cv.setTotalPowerUnits(payload.totalPowerUnits);
+        cv.setOperationClassification(payload.operationClassification);
+        cv.setCarrierOperation(payload.carrierOperation);
+        cv.setCargoCarried(payload.cargoCarried);
+        cv.setMcs150Date(payload.mcs150Date);
+        cv.setMcs150Mileage(payload.mcs150Mileage);
+        cv.setMcs150Year(payload.mcs150Year);
+        cv.setSafetyRating(payload.safetyRating);
+        cv.setSafetyRatingDate(payload.safetyRatingDate);
+        cv.setSafetyReviewDate(payload.safetyReviewDate);
+        cv.setSafetyType(payload.safetyType);
 
-    // Determine canonical MC to cache/persist: prefer parsed MC, else if the lookup was MC use the lookup value
-    String mcToCache = payload.mcNumber;
-    if (mcToCache == null && type == CarrierLookupType.MC) {
-        mcToCache = value;
-    }
+        CarrierValidation saved = null;
+        try {
+            saved = carrierValidationRepo.save(cv);
+        } catch (ObjectOptimisticLockingFailureException e) {
+            log.warn("Optimistic lock failure while saving CarrierValidation; continuing.", e);
+        }
 
-    // persist to carrier_validations so cache misses can fall back to DB
-    CarrierValidation cv = new CarrierValidation();
-    cv.setLookupValue(value);
-    cv.setLookupType(type);
-    cv.setDotNumber(payload.dotNumber);
-    cv.setMcNumber(mcToCache);
-    cv.setLegalName(payload.legalName);
-    cv.setDbaName(payload.dbaName);
-    cv.setOperatingStatus(payload.operatingStatus);
-    cv.setAllowedToOperate(payload.allowedToOperate);
-    cv.setPhyStreet(payload.phyStreet);
-    cv.setPhyCity(payload.phyCity);
-    cv.setPhyState(payload.phyState);
-    cv.setPhyZip(payload.phyZip);
-    cv.setPhyCountry(payload.phyCountry);
-    cv.setTotalDrivers(payload.totalDrivers);
-    cv.setTotalPowerUnits(payload.totalPowerUnits);
+        java.util.UUID id = saved != null ? saved.getId() : java.util.UUID.randomUUID();
 
-    CarrierValidation saved = null;
-    try {
-        saved = carrierValidationRepo.save(cv);
-    } catch (ObjectOptimisticLockingFailureException e) {
-        // Another transaction updated/deleted the same row — continue and keep the cached preview.
-        log.warn("Optimistic lock failure while saving CarrierValidation; continuing.", e);
-    }
-
-    java.util.UUID id = saved != null ? saved.getId() : java.util.UUID.randomUUID();
-
-    // If parsed mcNumber is null but we computed a canonical mcToCache (because the lookup was MC), store it in the brokerMcCache
-    if (payload.mcNumber == null && mcToCache != null) {
-        tempStore.storeBrokerMcNumber(id, mcToCache);
-    }
-
-    tempStore.storeValidation(id, payload);
+        if (r.getMcNumber() == null && mcToCache != null) {
+            tempStore.storeBrokerMcNumber(id, mcToCache);
+        }
+        tempStore.storeValidation(id, payload);
         log.info("Carrier validation cached id={} for value={}", id, value);
 
         return new LookupResponse(
-                id,
-                type.name(),
-                value,
-                payload.dotNumber,
-                // prefer the parsed mcNumber when present, otherwise return the canonical mcToCache
-                payload.mcNumber != null ? payload.mcNumber : mcToCache,
-                payload.legalName,
-                payload.dbaName,
-                payload.operatingStatus,
-                payload.allowedToOperate,
-                payload.phyStreet,
-                payload.phyCity,
-                payload.phyState,
-                payload.phyZip,
-                payload.phyCountry,
-                payload.totalDrivers,
-                payload.totalPowerUnits,
-                payload.brokerAuthorityActive
+                id, type.name(), value,
+                payload.dotNumber, mcToCache,
+                payload.legalName, payload.dbaName, payload.entityType,
+                payload.operatingStatus, payload.allowedToOperate,
+                payload.outOfServiceDate, payload.latestUpdate,
+                payload.phyStreet, payload.phyCity, payload.phyState, payload.phyZip, payload.phyCountry,
+                payload.mailingStreet, payload.mailingCity, payload.mailingState, payload.mailingZip, payload.mailingCountry,
+                payload.phone, payload.totalDrivers, payload.totalPowerUnits,
+                payload.operationClassification, payload.carrierOperation, payload.cargoCarried,
+                payload.mcs150Date, payload.mcs150Mileage, payload.mcs150Year,
+                payload.safetyRating, payload.safetyRatingDate, payload.safetyReviewDate, payload.safetyType,
+                payload.usInspections, payload.canadaInspections,
+                payload.usCrashes, payload.canadaCrashes,
+                null   // brokerAuthorityActive
         );
     }
 
-    // Keep old validate method (non-persisting) for registration flow
+    // Keep legacy validate method (non-persisting) for flows that only need validation result
     public CarrierValidationResult validate(String value, CarrierLookupType type) {
         FmcsaCarrierResponse response =
                 (type == CarrierLookupType.DOT)
                         ? fmcsaClient.fetchByDot(value)
                         : fmcsaClient.fetchByMc(value);
 
-        if (response == null || response.getContent() == null || response.getContent().isEmpty()) {
+        if (response == null || response.getContent() == null || response.getContent().getCarrier() == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Carrier not found in FMCSA");
         }
 

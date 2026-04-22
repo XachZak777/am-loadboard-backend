@@ -2,23 +2,30 @@ package am.loadboardbackend.model;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 @Entity
 @Table(name = "users")
 @Data
-public class User {
+@EqualsAndHashCode(callSuper = false)
+public class User extends Auditable<String> {
 
     @Id
     @GeneratedValue
     private UUID id;
 
+    @ToString.Exclude
     @OneToOne(optional = true, cascade = CascadeType.PERSIST)
     @JoinColumn(name = "carrier_id", nullable = true)
     private Carrier carrier;
 
+    @ToString.Exclude
     @OneToOne(optional = true, cascade = CascadeType.PERSIST)
     @JoinColumn(name = "broker_id", nullable = true)
     private Broker broker;
@@ -43,8 +50,6 @@ public class User {
 
     private LocalDateTime emailVerifiedAt;
 
-    private LocalDateTime createdAt;
-
     /**
      * Manual admin approval flag. Until approved, the user can authenticate
      * but should not be able to access protected business endpoints.
@@ -54,8 +59,10 @@ public class User {
 
     private LocalDateTime adminApprovedAt;
 
-    @PrePersist
-    void onCreate() {
-        createdAt = LocalDateTime.now();
-    }
+    @Column(nullable = false, columnDefinition = "boolean not null default false")
+    private boolean loginDisabled = false;
+
+    @ToString.Exclude
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private Set<SecurityToken> securityTokens = new HashSet<>();
 }

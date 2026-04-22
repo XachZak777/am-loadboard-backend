@@ -3,92 +3,123 @@ package am.loadboardbackend.exception;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import am.loadboardbackend.dto.ErrorResponse;
-import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.http.converter.HttpMessageNotWritableException;
 import org.springframework.web.HttpMediaTypeNotAcceptableException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.time.LocalDateTime;
+import jakarta.servlet.http.HttpServletRequest;
 
-@ControllerAdvice
+@RestControllerAdvice
 public class GlobalExceptionHandler {
 
-        @ExceptionHandler(ResponseStatusException.class)
-        @org.springframework.web.bind.annotation.ResponseBody
-        public ResponseEntity<ErrorResponse> handleResponseStatus(ResponseStatusException ex) {
-                ErrorResponse body = new ErrorResponse(
-                                LocalDateTime.now().toString(),
-                                ex.getStatusCode().value(),
-                                ex.getReason(),
-                                ex.getReason() == null ? ex.getMessage() : ex.getReason()
-                );
-                return ResponseEntity
-                                .status(ex.getStatusCode())
-                                .body(body);
-        }
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<ErrorResponse> handleResponseStatus(
+            ResponseStatusException ex, HttpServletRequest request) {
+        String message = ex.getReason() != null ? ex.getReason() : ex.getMessage();
+        ErrorResponse body = ErrorResponse.of(
+                ex.getStatusCode().value(),
+                HttpStatus.resolve(ex.getStatusCode().value()) != null
+                        ? HttpStatus.resolve(ex.getStatusCode().value()).getReasonPhrase()
+                        : "Error",
+                message,
+                request.getRequestURI()
+        );
+        return ResponseEntity.status(ex.getStatusCode()).body(body);
+    }
 
     @ExceptionHandler(RuntimeException.class)
-    @org.springframework.web.bind.annotation.ResponseBody
-    public ResponseEntity<ErrorResponse> handleRuntime(RuntimeException ex) {
+    public ResponseEntity<ErrorResponse> handleRuntime(
+            RuntimeException ex, HttpServletRequest request) {
         HttpStatus status = mapStatus(ex.getMessage());
-
-        ErrorResponse body = new ErrorResponse(
-                LocalDateTime.now().toString(),
+        ErrorResponse body = ErrorResponse.of(
                 status.value(),
-                ex.getMessage(),
-                mapMessage(ex.getMessage())
+                status.getReasonPhrase(),
+                mapMessage(ex.getMessage()),
+                request.getRequestURI()
         );
-
-        return ResponseEntity
-                .status(status)
-                .body(body);
+        return ResponseEntity.status(status).body(body);
     }
 
     @ExceptionHandler(Exception.class)
-    @org.springframework.web.bind.annotation.ResponseBody
-    public ResponseEntity<ErrorResponse> handleAny(Exception ex) {
-        ErrorResponse body = new ErrorResponse(
-                LocalDateTime.now().toString(),
+    public ResponseEntity<ErrorResponse> handleAny(
+            Exception ex, HttpServletRequest request) {
+        ErrorResponse body = ErrorResponse.of(
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                "INTERNAL_SERVER_ERROR",
-                ex.getMessage() == null ? "Unexpected error" : ex.getMessage()
+                HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase(),
+                ex.getMessage() == null ? "Unexpected error" : ex.getMessage(),
+                request.getRequestURI()
         );
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(body);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
     }
 
     @ExceptionHandler({HttpMediaTypeNotAcceptableException.class, HttpMessageNotWritableException.class})
-    public ResponseEntity<ErrorResponse> handleSerializationErrors(Exception ex) {
-        ErrorResponse body = new ErrorResponse(
-                java.time.LocalDateTime.now().toString(),
-                org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                "SERIALIZATION_ERROR",
-                ex.getMessage()
+    public ResponseEntity<ErrorResponse> handleSerializationErrors(
+            Exception ex, HttpServletRequest request) {
+        ErrorResponse body = ErrorResponse.of(
+                HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                "Serialization Error",
+                ex.getMessage() != null ? ex.getMessage() : "Serialization error",
+                request.getRequestURI()
         );
-        return ResponseEntity.status(org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(body);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
     }
 
     @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
-    public ResponseEntity<ErrorResponse> handleOptimisticLock(ObjectOptimisticLockingFailureException ex) {
-        ErrorResponse body = new ErrorResponse(
-                LocalDateTime.now().toString(),
-                org.springframework.http.HttpStatus.CONFLICT.value(),
-                "RESOURCE_CONFLICT",
-                "Resource was modified by another process; please retry"
+    public ResponseEntity<ErrorResponse> handleOptimisticLock(
+            ObjectOptimisticLockingFailureException ex, HttpServletRequest request) {
+        ErrorResponse body = ErrorResponse.of(
+                HttpStatus.CONFLICT.value(),
+                HttpStatus.CONFLICT.getReasonPhrase(),
+                "Resource was modified by another process; please retry",
+                request.getRequestURI()
         );
-        return ResponseEntity.status(org.springframework.http.HttpStatus.CONFLICT)
-                .body(body);
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+    }
+
+    /**
+     * Catches raw DB constraint violations (e.g. unique-key on email, NOT NULL on
+     * carrier_id) that slip past the service-layer checks. Returns 409 instead of 500.
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> handleDataIntegrity(
+            DataIntegrityViolationException ex, HttpServletRequest request) {
+        Throwable cause = ex.getMostSpecificCause();
+        String detail = (cause != null && cause.getMessage() != null) ? cause.getMessage() : "";
+        String message = "Data integrity violation";
+        if (detail.contains("email")) {
+            message = "Email address is already in use";
+        } else if (detail.contains("carrier_id") && detail.contains("relation \"loads\"")) {
+            message = "Load posting failed: database schema is out of date. Please run patch.sql.";
+        } else if (detail.contains("carrier_id")) {
+            message = "Registration failed: carrier association is missing. Please complete carrier registration first.";
+        } else if (detail.contains("broker_id")) {
+            message = "Registration failed: broker association is missing. Please complete broker registration first.";
+        } else if (detail.contains("mc_number")) {
+            message = "An account with this MC number already exists";
+        } else if (detail.contains("dot_number")) {
+            message = "An account with this DOT number already exists";
+        } else if (!detail.isEmpty()) {
+            message = "Data integrity violation: " + detail;
+        }
+        ErrorResponse body = ErrorResponse.of(
+                HttpStatus.CONFLICT.value(),
+                HttpStatus.CONFLICT.getReasonPhrase(),
+                message,
+                request.getRequestURI()
+        );
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
     }
 
     private HttpStatus mapStatus(String code) {
+        if (code == null) return HttpStatus.INTERNAL_SERVER_ERROR;
         return switch (code) {
             case "CARRIER_NOT_FOUND" -> HttpStatus.NOT_FOUND;
             case "CARRIER_NOT_ALLOWED" -> HttpStatus.FORBIDDEN;
-            case "CARRIER_ALREADY_REGISTERED" -> HttpStatus.CONFLICT;
-            case "EMAIL_ALREADY_EXISTS" -> HttpStatus.CONFLICT;
+            case "CARRIER_ALREADY_REGISTERED", "EMAIL_ALREADY_EXISTS" -> HttpStatus.CONFLICT;
             case "INVALID_CREDENTIALS" -> HttpStatus.UNAUTHORIZED;
             case "FMCSA_SERVICE_UNAVAILABLE" -> HttpStatus.SERVICE_UNAVAILABLE;
             default -> HttpStatus.BAD_REQUEST;
@@ -96,6 +127,7 @@ public class GlobalExceptionHandler {
     }
 
     private String mapMessage(String code) {
+        if (code == null) return "Unexpected error";
         return switch (code) {
             case "CARRIER_NOT_FOUND" ->
                     "Carrier was not found in the FMCSA database";
@@ -114,4 +146,3 @@ public class GlobalExceptionHandler {
         };
     }
 }
-

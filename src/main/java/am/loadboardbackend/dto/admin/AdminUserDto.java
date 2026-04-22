@@ -1,0 +1,40 @@
+package am.loadboardbackend.dto.admin;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
+
+/**
+ * Full view of a registered user for the admin panel.
+ * Includes the linked carrier/broker profile fields and uploaded documents.
+ */
+public record AdminUserDto(
+
+        // ── User identity ────────────────────────────────────────────────
+        UUID    userId,
+        String  email,
+        String  role,
+        boolean adminApproved,
+        LocalDateTime adminApprovedAt,
+        boolean emailVerified,
+        LocalDateTime createdAt,
+
+        // ── Profile (carrier or broker) ──────────────────────────────────
+        UUID    profileId,       // carrier.id or broker.id
+        String  companyName,
+        String  dotNumber,
+        String  mcNumber,
+        String  phoneNumber,
+        String  mailingAddress,
+        String  city,
+        String  state,
+        String  zipCode,
+        String  insuranceCompany,
+        String  cargoInsurance,
+        String  liabilityInsurance,
+        String  taxIdType,
+        String  taxId,
+
+        // ── Uploaded documents (W9 etc.) ─────────────────────────────────
+        List<AdminDocumentDto> documents
+) {}

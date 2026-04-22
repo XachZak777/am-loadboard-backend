@@ -2,8 +2,10 @@ package am.loadboardbackend.api;
 
 import am.loadboardbackend.dto.auth.LoginRequest;
 import am.loadboardbackend.dto.auth.LoginResponse;
+import am.loadboardbackend.dto.auth.MeResponse;
 import am.loadboardbackend.dto.auth.RegisterAdminRequest;
 import am.loadboardbackend.dto.auth.RegisterRequest;
+import am.loadboardbackend.dto.document.DocumentUploadResponse;
 import am.loadboardbackend.dto.load.BidResponse;
 import am.loadboardbackend.dto.load.CreateBidRequest;
 import am.loadboardbackend.dto.load.CreateLoadRequest;
@@ -18,10 +20,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.web.context.WebApplicationContext;
 
 import java.math.BigDecimal;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -31,6 +37,7 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.webAppC
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
+@DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_EACH_TEST_METHOD)
 class AuthAndLoadWorkflowTest {
 
     @Autowired
@@ -195,7 +202,169 @@ class AuthAndLoadWorkflowTest {
         assertThat(resp.getRole()).isIn("BROKER", "CARRIER", "ADMIN");
     }
 
-    private <T> T read(org.springframework.test.web.servlet.ResultActions ra, Class<T> clazz) {
+    // ─────────────────────────────────────────────────────────────────────────
+    // NEW TESTS
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @Test
+    void testCarrierProfileCompletion() throws Exception {
+        // Register carrier
+        RegisterRequest reg = new RegisterRequest();
+        reg.setEmail("carrier-profile@example.com");
+        reg.setPassword("password123");
+        reg.setRole("CARRIER");
+        LoginResponse carrierReg = read(mvc.perform(post("/api/auth/register")
+                        .accept(MediaType.APPLICATION_JSON)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(om.writeValueAsString(reg)))
+                .andExpect(status().isCreated()), LoginResponse.class);
+        String token = carrierReg.getToken();
+
+        // Verify adminApproved is false in registration response
+        assertThat(carrierReg.isAdminApproved()).isFalse();
+
+        // PATCH /api/carriers/profile
+        java.util.HashMap<String, Object> profileBody = new java.util.HashMap<>();
+        profileBody.put("companyName", "Swift Haulers LLC");
+        profileBody.put("dotNumber", "123456");
+        profileBody.put("mcNumber", "MC-123456");
+        profileBody.put("phoneNumber", "+14155552671");
+        profileBody.put("insuranceCompany", "ABC Insurance Co.");
+        profileBody.put("cargoInsurance", 100000);
+        profileBody.put("liabilityInsurance", 1000000);
+        profileBody.put("taxIdType", "EIN");
+        profileBody.put("taxId", "12-3456789");
+        profileBody.put("mailingAddress", "123 Main St");
+        profileBody.put("city", "Dallas");
+        profileBody.put("state", "TX");
+        profileBody.put("zipCode", "75001");
+
+        String patchResult = mvc.perform(patch("/api/carriers/profile")
+                        .accept(MediaType.APPLICATION_JSON)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(om.writeValueAsString(profileBody)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(patchResult).contains("Profile updated successfully");
+
+        // GET /api/auth/me → profileComplete=true, adminApproved=false
+        MeResponse me = read(mvc.perform(get("/api/auth/me")
+                        .accept(MediaType.APPLICATION_JSON)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isOk()), MeResponse.class);
+
+        assertThat(me.profileComplete()).isTrue();
+        assertThat(me.adminApproved()).isFalse();
+        assertThat(me.role()).isEqualTo("CARRIER");
+    }
+
+    @Test
+    void testW9Upload() throws Exception {
+        // Register carrier
+        RegisterRequest reg = new RegisterRequest();
+        reg.setEmail("carrier-w9@example.com");
+        reg.setPassword("password123");
+        reg.setRole("CARRIER");
+        LoginResponse carrierReg = read(mvc.perform(post("/api/auth/register")
+                        .accept(MediaType.APPLICATION_JSON)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(om.writeValueAsString(reg)))
+                .andExpect(status().isCreated()), LoginResponse.class);
+        String token = carrierReg.getToken();
+
+        // Create a minimal mock PDF (just needs the right content-type / extension)
+        byte[] pdfContent = "%PDF-1.4 mock content".getBytes();
+        MockMultipartFile mockFile = new MockMultipartFile(
+                "file", "w9_test.pdf", "application/pdf", pdfContent);
+
+        // POST /api/carriers/documents/w9
+        DocumentUploadResponse uploadResp = read(
+                mvc.perform(multipart("/api/carriers/documents/w9")
+                                .file(mockFile)
+                                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                                .accept(MediaType.APPLICATION_JSON))
+                        .andExpect(status().isOk()),
+                DocumentUploadResponse.class);
+
+        assertThat(uploadResp.fileId()).isNotBlank();
+        assertThat(uploadResp.fileName()).isNotBlank();
+        assertThat(uploadResp.fileUrl()).startsWith("/uploads/w9/");
+    }
+
+    @Test
+    void testAdminApprovalGate() throws Exception {
+        // Create admin
+        RegisterAdminRequest adminReq = new RegisterAdminRequest();
+        adminReq.setEmail("admin-gate@example.com");
+        adminReq.setPassword("password123");
+        LoginResponse adminReg = read(mvc.perform(post("/api/auth/register-admin")
+                        .accept(MediaType.APPLICATION_JSON)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(om.writeValueAsString(adminReq)))
+                .andExpect(status().isCreated()), LoginResponse.class);
+        String adminToken = adminReg.getToken();
+
+        // Register carrier
+        RegisterRequest reg = new RegisterRequest();
+        reg.setEmail("carrier-gate@example.com");
+        reg.setPassword("password123");
+        reg.setRole("CARRIER");
+        LoginResponse carrierReg = read(mvc.perform(post("/api/auth/register")
+                        .accept(MediaType.APPLICATION_JSON)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(om.writeValueAsString(reg)))
+                .andExpect(status().isCreated()), LoginResponse.class);
+        String carrierToken = carrierReg.getToken();
+
+        // Complete profile
+        Map<String, Object> profileBody = Map.of(
+                "companyName", "Gate Carrier LLC",
+                "phoneNumber", "+14155550001",
+                "insuranceCompany", "Gate Insurance",
+                "cargoInsurance", 50000,
+                "liabilityInsurance", 500000,
+                "taxIdType", "EIN",
+                "taxId", "99-9999999"
+        );
+        mvc.perform(patch("/api/carriers/profile")
+                        .accept(MediaType.APPLICATION_JSON)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + carrierToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(om.writeValueAsString(profileBody)))
+                .andExpect(status().isOk());
+
+        // Try GET /api/loads — should get 403 (not approved)
+        mvc.perform(get("/api/loads")
+                        .accept(MediaType.APPLICATION_JSON)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + carrierToken))
+                .andExpect(status().isForbidden());
+
+        // Admin approves
+        mvc.perform(post("/api/admin/users/" + carrierReg.getUserId() + "/approve")
+                        .accept(MediaType.APPLICATION_JSON)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
+                .andExpect(status().isOk());
+
+        // Login again to get fresh token reflecting approval
+        LoginRequest login = new LoginRequest();
+        login.setEmail("carrier-gate@example.com");
+        login.setPassword("password123");
+        LoginResponse freshLogin = read(mvc.perform(post("/api/auth/login")
+                        .accept(MediaType.APPLICATION_JSON)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(om.writeValueAsString(login)))
+                .andExpect(status().isOk()), LoginResponse.class);
+        assertThat(freshLogin.isAdminApproved()).isTrue();
+
+        // After approval: GET /api/loads should succeed (200)
+        mvc.perform(get("/api/loads")
+                        .accept(MediaType.APPLICATION_JSON)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + freshLogin.getToken()))
+                .andExpect(status().isOk());
+    }
+
+    private <T> T read(ResultActions ra, Class<T> clazz) {
         try {
             String json = ra.andReturn().getResponse().getContentAsString();
             if (json == null || json.isBlank()) return null;

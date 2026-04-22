@@ -1,8 +1,12 @@
 package am.loadboardbackend.service;
 
+import am.loadboardbackend.config.AppProperties;
+import am.loadboardbackend.mailing.RegistrationApprovedEmailContext;
+import am.loadboardbackend.mailing.RegistrationDeclinedEmailContext;
 import am.loadboardbackend.model.User;
 import am.loadboardbackend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,9 +17,12 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class UserApprovalService {
 
     private final UserRepository userRepository;
+    private final EmailService emailService;
+    private final AppProperties appProperties;
 
     @Transactional
     public User approveUser(UUID id) {
@@ -23,7 +30,9 @@ public class UserApprovalService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         user.setAdminApproved(true);
         user.setAdminApprovedAt(LocalDateTime.now());
-        return userRepository.save(user);
+        User saved = userRepository.save(user);
+        sendApprovalEmail(saved);
+        return saved;
     }
 
     @Transactional
@@ -32,6 +41,87 @@ public class UserApprovalService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         user.setAdminApproved(false);
         user.setAdminApprovedAt(null);
-        return userRepository.save(user);
+        User saved = userRepository.save(user);
+        sendDeclinedEmail(saved);
+        return saved;
+    }
+
+    /** Approve the user whose carrier.id == carrierId. */
+    @Transactional
+    public User approveByCarrierId(UUID carrierId) {
+        User user = userRepository.findByCarrierId(carrierId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "User with carrier id " + carrierId + " not found"));
+        user.setAdminApproved(true);
+        user.setAdminApprovedAt(LocalDateTime.now());
+        User saved = userRepository.save(user);
+        sendApprovalEmail(saved);
+        return saved;
+    }
+
+    /** Approve the user whose broker.id == brokerId. */
+    @Transactional
+    public User approveByBrokerId(UUID brokerId) {
+        User user = userRepository.findByBrokerId(brokerId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "User with broker id " + brokerId + " not found"));
+        user.setAdminApproved(true);
+        user.setAdminApprovedAt(LocalDateTime.now());
+        User saved = userRepository.save(user);
+        sendApprovalEmail(saved);
+        return saved;
+    }
+
+    /** Decline (reject) the user whose carrier.id == carrierId. */
+    @Transactional
+    public User declineByCarrierId(UUID carrierId) {
+        User user = userRepository.findByCarrierId(carrierId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "User with carrier id " + carrierId + " not found"));
+        user.setAdminApproved(false);
+        user.setAdminApprovedAt(null);
+        User saved = userRepository.save(user);
+        sendDeclinedEmail(saved);
+        return saved;
+    }
+
+    /** Decline (reject) the user whose broker.id == brokerId. */
+    @Transactional
+    public User declineByBrokerId(UUID brokerId) {
+        User user = userRepository.findByBrokerId(brokerId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "User with broker id " + brokerId + " not found"));
+        user.setAdminApproved(false);
+        user.setAdminApprovedAt(null);
+        User saved = userRepository.save(user);
+        sendDeclinedEmail(saved);
+        return saved;
+    }
+
+    // ── email helpers ─────────────────────────────────────────────────────────
+
+    private void sendApprovalEmail(User user) {
+        try {
+            RegistrationApprovedEmailContext ctx = new RegistrationApprovedEmailContext();
+            ctx.init(user);
+            ctx.setFrom(appProperties.getMail().getFrom());
+            emailService.sendEmail(ctx);
+            log.info("Approval email queued for userId={} email={}", user.getId(), user.getEmail());
+        } catch (Exception e) {
+            log.error("Failed to queue approval email for userId={}: {}", user.getId(), e.getMessage(), e);
+        }
+    }
+
+    private void sendDeclinedEmail(User user) {
+        try {
+            RegistrationDeclinedEmailContext ctx = new RegistrationDeclinedEmailContext();
+            ctx.init(user);
+            ctx.setFrom(appProperties.getMail().getFrom());
+            emailService.sendEmail(ctx);
+            log.info("Declined email queued for userId={} email={}", user.getId(), user.getEmail());
+        } catch (Exception e) {
+            log.error("Failed to queue declined email for userId={}: {}", user.getId(), e.getMessage(), e);
+        }
     }
 }
+

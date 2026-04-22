@@ -21,8 +21,10 @@ import am.loadboardbackend.service.validation.CarrierValidationResult;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 @RequiredArgsConstructor
@@ -44,9 +46,13 @@ public class RegistrationService {
     @Transactional
     public LoginResponse registerCarrier(RegisterCarrierRequest req) {
         log.info("RegisterCarrier start lookupValue={} lookupType={} email={}", req.lookupValue(), req.lookupType(), req.email());
+        assertEmailNotTaken(req.email());
 
         CarrierValidationResult validation =
                 carrierValidationService.validate(req.lookupValue(), req.lookupType());
+
+        // Guard: ensure this DOT/MC is not already registered as a Broker
+        assertDotAndMcNotUsedByBroker(validation.getDotNumber(), validation.getMcNumber());
 
         Carrier carrier = new Carrier();
         carrier.setDotNumber(validation.getDotNumber());
@@ -65,6 +71,7 @@ public class RegistrationService {
         carrier.setTotalDrivers(validation.getTotalDrivers());
         carrier.setTotalPowerUnits(validation.getTotalPowerUnits());
 
+        removeOrphanedCarrier(carrier.getDotNumber(), carrier.getMcNumber());
     carrierRepository.save(carrier);
     log.info("Carrier entity persisted id={} mc={} dot={}", carrier.getId(), carrier.getMcNumber(), carrier.getDotNumber());
 
@@ -73,8 +80,7 @@ public class RegistrationService {
         user.setPasswordHash(passwordEncoder.encode(req.password()));
         user.setRole(UserRole.ROLE_CARRIER);
         user.setCarrier(carrier);
-    user.setEmailVerified(true);
-    user.setEmailVerifiedAt(java.time.LocalDateTime.now());
+    user.setEmailVerified(false);
         user.setAdminApproved(false);
 
         userRepository.save(user);
@@ -84,13 +90,15 @@ public class RegistrationService {
         jwtUtil.generateToken(user),
         user.getId().toString(),
         user.getEmail(),
-        user.getRole() != null ? user.getRole().name().replace("ROLE_", "") : null
+        user.getRole() != null ? user.getRole().name().replace("ROLE_", "") : null,
+        user.isAdminApproved()
     );
     }
 
     @Transactional
     public LoginResponse registerCarrierFromValidation(java.util.UUID validationId, String email, String password) {
         log.info("RegisterCarrierFromValidation start validationId={} email={}", validationId, email);
+        assertEmailNotTaken(email);
             boolean usedCache = true;
             var cached = tempStore.getValidation(validationId);
 
@@ -129,18 +137,17 @@ public class RegistrationService {
                 carrier.setTotalPowerUnits(cv.getTotalPowerUnits());
             }
 
+            removeOrphanedCarrier(carrier.getDotNumber(), carrier.getMcNumber());
+            // Guard: ensure this DOT/MC is not already registered as a Broker
+            assertDotAndMcNotUsedByBroker(carrier.getDotNumber(), carrier.getMcNumber());
             carrierRepository.save(carrier);
-            log.info("Carrier persisted from validation validationId={} carrierId={}", validationId, carrier.getId());
-
-            tempStore.removeValidation(validationId);
 
             User user = new User();
             user.setEmail(email);
             user.setPasswordHash(passwordEncoder.encode(password));
             user.setRole(UserRole.ROLE_CARRIER);
             user.setCarrier(carrier);
-            user.setEmailVerified(true);
-            user.setEmailVerifiedAt(java.time.LocalDateTime.now());
+            user.setEmailVerified(false);
             user.setAdminApproved(false);
 
         userRepository.save(user);
@@ -150,13 +157,15 @@ public class RegistrationService {
         jwtUtil.generateToken(user),
         user.getId().toString(),
         user.getEmail(),
-        user.getRole() != null ? user.getRole().name().replace("ROLE_", "") : null
+        user.getRole() != null ? user.getRole().name().replace("ROLE_", "") : null,
+        user.isAdminApproved()
     );
     }
 
     @Transactional
     public LoginResponse registerBrokerFromValidation(java.util.UUID validationId, String email, String password) {
         log.info("RegisterBrokerFromValidation start validationId={} email={}", validationId, email);
+        assertEmailNotTaken(email);
 
         var cached = tempStore.getValidation(validationId);
         Broker broker = new Broker();
@@ -184,6 +193,9 @@ public class RegistrationService {
             throw new RuntimeException("Broker mcNumber missing from validation result; cannot persist");
         }
 
+        removeOrphanedBroker(broker.getMcNumber());
+        // Guard: ensure this MC/DOT is not already registered as a Carrier
+        assertMcAndDotNotUsedByCarrier(broker.getDotNumber(), broker.getMcNumber());
         brokerRepository.save(broker);
         log.info("Broker persisted from validation validationId={} brokerId={}", validationId, broker.getId());
 
@@ -194,8 +206,7 @@ public class RegistrationService {
         user.setPasswordHash(passwordEncoder.encode(password));
         user.setRole(UserRole.ROLE_BROKER);
         user.setBroker(broker);
-    user.setEmailVerified(true);
-    user.setEmailVerifiedAt(java.time.LocalDateTime.now());
+    user.setEmailVerified(false);
         user.setAdminApproved(false);
 
         userRepository.save(user);
@@ -205,13 +216,15 @@ public class RegistrationService {
         jwtUtil.generateToken(user),
         user.getId().toString(),
         user.getEmail(),
-        user.getRole() != null ? user.getRole().name().replace("ROLE_", "") : null
+        user.getRole() != null ? user.getRole().name().replace("ROLE_", "") : null,
+        user.isAdminApproved()
     );
     }
 
     @Transactional
     public LoginResponse registerBroker(RegisterBrokerRequest req) {
         log.info("RegisterBroker start mcNumber={} email={}", req.mcNumber(), req.email());
+        assertEmailNotTaken(req.email());
 
         BrokerValidationResult validation = brokerValidationService.validate(req.mcNumber());
 
@@ -222,6 +235,9 @@ public class RegistrationService {
         broker.setOperatingStatus(validation.getOperatingStatus());
         broker.setBrokerAuthorityActive(validation.isBrokerAuthorityActive());
 
+        removeOrphanedBroker(broker.getMcNumber());
+        // Guard: ensure this MC/DOT is not already registered as a Carrier
+        assertMcAndDotNotUsedByCarrier(broker.getDotNumber(), broker.getMcNumber());
         brokerRepository.save(broker);
 
         User user = new User();
@@ -229,24 +245,25 @@ public class RegistrationService {
         user.setPasswordHash(passwordEncoder.encode(req.password()));
         user.setRole(UserRole.ROLE_BROKER);
         user.setBroker(broker);
-    user.setEmailVerified(true);
-    user.setEmailVerifiedAt(java.time.LocalDateTime.now());
-    user.setAdminApproved(false);
+        user.setEmailVerified(false);
+        user.setAdminApproved(false);
 
-    userRepository.save(user);
-    log.info("RegisterBroker success email={} userId={} brokerId={}", user.getEmail(), user.getId(), broker.getId());
+        userRepository.save(user);
+        log.info("RegisterBroker success email={} userId={} brokerId={}", user.getEmail(), user.getId(), broker.getId());
 
         return new LoginResponse(
                 jwtUtil.generateToken(user),
                 user.getId().toString(),
                 user.getEmail(),
-                user.getRole() != null ? user.getRole().name().replace("ROLE_", "") : null
+                user.getRole() != null ? user.getRole().name().replace("ROLE_", "") : null,
+                user.isAdminApproved()
         );
     }
 
     @Transactional
     public LoginResponse registerCarrierWithPreview(am.loadboardbackend.dto.auth.RegisterCarrierFromPreviewRequest req) {
         log.info("RegisterCarrierWithPreview start email={} mc={} dot={}", req.email(), req.mcNumber(), req.dotNumber());
+        assertEmailNotTaken(req.email());
         Carrier carrier = new Carrier();
         carrier.setDotNumber(req.dotNumber());
         carrier.setMcNumber(req.mcNumber());
@@ -262,6 +279,9 @@ public class RegistrationService {
         carrier.setTotalDrivers(req.totalDrivers());
         carrier.setTotalPowerUnits(req.totalPowerUnits());
 
+        removeOrphanedCarrier(carrier.getDotNumber(), carrier.getMcNumber());
+        // Guard: ensure this DOT/MC is not already registered as a Broker
+        assertDotAndMcNotUsedByBroker(carrier.getDotNumber(), carrier.getMcNumber());
         carrierRepository.save(carrier);
 
         User user = new User();
@@ -269,8 +289,7 @@ public class RegistrationService {
         user.setPasswordHash(passwordEncoder.encode(req.password()));
         user.setRole(UserRole.ROLE_CARRIER);
         user.setCarrier(carrier);
-    user.setEmailVerified(true);
-    user.setEmailVerifiedAt(java.time.LocalDateTime.now());
+        user.setEmailVerified(false);
         user.setAdminApproved(false);
 
         userRepository.save(user);
@@ -280,13 +299,15 @@ public class RegistrationService {
         jwtUtil.generateToken(user),
         user.getId().toString(),
         user.getEmail(),
-        user.getRole() != null ? user.getRole().name().replace("ROLE_", "") : null
+        user.getRole() != null ? user.getRole().name().replace("ROLE_", "") : null,
+        user.isAdminApproved()
     );
     }
 
     @Transactional
     public LoginResponse registerBrokerWithPreview(am.loadboardbackend.dto.auth.RegisterBrokerFromPreviewRequest req) {
         log.info("RegisterBrokerWithPreview start email={} mc={} dot={}", req.email(), req.mcNumber(), req.dotNumber());
+        assertEmailNotTaken(req.email());
         Broker broker = new Broker();
         broker.setDotNumber(req.dotNumber());
         broker.setMcNumber(req.mcNumber());
@@ -294,6 +315,9 @@ public class RegistrationService {
         broker.setOperatingStatus(req.operatingStatus());
         broker.setBrokerAuthorityActive(Boolean.TRUE.equals(req.brokerAuthorityActive()));
 
+        removeOrphanedBroker(broker.getMcNumber());
+        // Guard: ensure this MC/DOT is not already registered as a Carrier
+        assertMcAndDotNotUsedByCarrier(broker.getDotNumber(), broker.getMcNumber());
         brokerRepository.save(broker);
 
         User user = new User();
@@ -301,8 +325,7 @@ public class RegistrationService {
         user.setPasswordHash(passwordEncoder.encode(req.password()));
         user.setRole(UserRole.ROLE_BROKER);
         user.setBroker(broker);
-    user.setEmailVerified(true);
-    user.setEmailVerifiedAt(java.time.LocalDateTime.now());
+    user.setEmailVerified(false);
         user.setAdminApproved(false);
 
         userRepository.save(user);
@@ -312,7 +335,8 @@ public class RegistrationService {
         jwtUtil.generateToken(user),
         user.getId().toString(),
         user.getEmail(),
-        user.getRole() != null ? user.getRole().name().replace("ROLE_", "") : null
+        user.getRole() != null ? user.getRole().name().replace("ROLE_", "") : null,
+        user.isAdminApproved()
     );
     }
 
@@ -351,7 +375,114 @@ public class RegistrationService {
         jwtUtil.generateToken(savedAdmin),
         savedAdmin.getId().toString(),
         savedAdmin.getEmail(),
-        savedAdmin.getRole() != null ? savedAdmin.getRole().name().replace("ROLE_", "") : null
+        savedAdmin.getRole() != null ? savedAdmin.getRole().name().replace("ROLE_", "") : null,
+        savedAdmin.isAdminApproved()
     );
+    }
+
+    // ── helpers ───────────────────────────────────────────────────────────────
+
+    /**
+     * Throws 409 Conflict if the email is already taken.
+     */
+    private void assertEmailNotTaken(String email) {
+        if (userRepository.findByEmail(email).isPresent()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email address is already in use");
+        }
+    }
+
+    /**
+     * If a Carrier row with the same DOT/MC exists but has NO associated user
+     * (orphaned after an admin delete), remove it so the new registration can
+     * create a fresh one.
+     */
+    private void removeOrphanedCarrier(String dotNumber, String mcNumber) {
+        if (dotNumber != null) {
+            carrierRepository.findByDotNumber(dotNumber).ifPresent(existing -> {
+                boolean hasOwner = userRepository.findByCarrierId(existing.getId()).isPresent();
+                if (!hasOwner) {
+                    log.info("Removing orphaned Carrier id={} dot={}", existing.getId(), dotNumber);
+                    carrierRepository.delete(existing);
+                }
+            });
+        }
+        if (mcNumber != null) {
+            carrierRepository.findByMcNumber(mcNumber).ifPresent(existing -> {
+                boolean hasOwner = userRepository.findByCarrierId(existing.getId()).isPresent();
+                if (!hasOwner) {
+                    log.info("Removing orphaned Carrier id={} mc={}", existing.getId(), mcNumber);
+                    carrierRepository.delete(existing);
+                }
+            });
+        }
+    }
+
+    /**
+     * Same as {@link #removeOrphanedCarrier} but for Broker rows.
+     */
+    private void removeOrphanedBroker(String mcNumber) {
+        if (mcNumber != null) {
+            brokerRepository.findByMcNumber(mcNumber).ifPresent(existing -> {
+                boolean hasOwner = userRepository.findByBrokerId(existing.getId()).isPresent();
+                if (!hasOwner) {
+                    log.info("Removing orphaned Broker id={} mc={}", existing.getId(), mcNumber);
+                    brokerRepository.delete(existing);
+                }
+            });
+        }
+    }
+
+    /**
+     * Throws 409 Conflict if the DOT or MC number is already registered under a Broker account.
+     * Prevents a carrier from hijacking a broker's MC/DOT and vice-versa.
+     */
+    private void assertDotAndMcNotUsedByBroker(String dotNumber, String mcNumber) {
+        if (dotNumber != null) {
+            brokerRepository.findByDotNumber(dotNumber).ifPresent(b -> {
+                boolean hasOwner = userRepository.findByBrokerId(b.getId()).isPresent();
+                if (hasOwner) {
+                    throw new ResponseStatusException(HttpStatus.CONFLICT,
+                            "DOT number " + dotNumber + " is already registered under a Broker account. " +
+                            "Please use the Broker registration flow.");
+                }
+            });
+        }
+        if (mcNumber != null) {
+            brokerRepository.findByMcNumber(mcNumber).ifPresent(b -> {
+                boolean hasOwner = userRepository.findByBrokerId(b.getId()).isPresent();
+                if (hasOwner) {
+                    throw new ResponseStatusException(HttpStatus.CONFLICT,
+                            "MC number " + mcNumber + " is already registered under a Broker account. " +
+                            "Please use the Broker registration flow.");
+                }
+            });
+        }
+    }
+
+    /**
+     * Throws 409 Conflict if the DOT or MC number is already registered under a Carrier account.
+     * Prevents a broker from hijacking a carrier's MC/DOT.
+     */
+    private void assertMcAndDotNotUsedByCarrier(String dotNumber, String mcNumber) {
+        if (dotNumber != null) {
+            carrierRepository.findByDotNumber(dotNumber).ifPresent(c -> {
+                boolean hasOwner = userRepository.findByCarrierId(c.getId()).isPresent();
+                if (hasOwner) {
+                    throw new ResponseStatusException(HttpStatus.CONFLICT,
+                            "DOT number " + dotNumber + " is already registered under a Carrier account. " +
+                            "Please use the Carrier registration flow.");
+                }
+            });
+        }
+        if (mcNumber != null) {
+            carrierRepository.findByMcNumber(mcNumber).ifPresent(c -> {
+                boolean hasOwner = userRepository.findByCarrierId(c.getId()).isPresent();
+                if (hasOwner) {
+                    throw new ResponseStatusException(HttpStatus.CONFLICT,
+                            "MC number " + mcNumber + " is already registered under a Carrier account. " +
+                            "Please use the Carrier registration flow.");
+                }
+            });
+        }
     }
 }

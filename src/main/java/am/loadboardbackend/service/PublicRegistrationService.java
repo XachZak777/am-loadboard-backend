@@ -1,23 +1,34 @@
 package am.loadboardbackend.service;
 
+import am.loadboardbackend.config.AppProperties;
 import am.loadboardbackend.dto.auth.LoginResponse;
 import am.loadboardbackend.dto.auth.RegisterRequest;
+import am.loadboardbackend.mailing.AccountVerificationEmailContext;
+import am.loadboardbackend.model.SecurityToken;
+import am.loadboardbackend.model.User;
+import am.loadboardbackend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class PublicRegistrationService {
 
     private final RegistrationService registrationService;
+    private final SecurityTokenService securityTokenService;
+    private final EmailService emailService;
+    private final UserRepository userRepository;
+    private final AppProperties appProperties;
 
     /**
      * Frontend-friendly registration endpoint.
-     * <p>
-     * The current frontend calls /api/auth/register with { email, password, role }.
-     * Internally we reuse existing broker/carrier registration flows.
+     * Registers the user (emailVerified = false), creates a verification token,
+     * and sends the confirmation email. Returns the LoginResponse so the frontend
+     * can store the JWT while the email is being verified in the background.
      */
     public LoginResponse register(RegisterRequest request) {
         if (request.getRole() == null) {
@@ -26,44 +37,55 @@ public class PublicRegistrationService {
 
         String role = request.getRole().trim().toUpperCase();
 
-        return switch (role) {
+        LoginResponse response = switch (role) {
             case "BROKER" -> {
-                String company = "Test Broker Co " + Math.abs(request.getEmail().hashCode());
+                String company = "Broker Co " + Math.abs(request.getEmail().hashCode());
                 String mc = "MC-" + Math.abs(request.getEmail().hashCode());
                 String dot = "DOT-" + Math.abs(request.getEmail().hashCode());
-
                 var req = new am.loadboardbackend.dto.auth.RegisterBrokerFromPreviewRequest(
-                        request.getEmail(),
-                        request.getPassword(),
-                        company,
-                        mc,
-                        dot,
-                        null,
-                        null
-                );
+                        request.getEmail(), request.getPassword(), company, mc, dot, null, null);
                 yield registrationService.registerBrokerWithPreview(req);
             }
             case "CARRIER" -> {
+                String emailHash = String.valueOf(Math.abs(request.getEmail().hashCode()));
                 var req = new am.loadboardbackend.dto.auth.RegisterCarrierFromPreviewRequest(
-                        request.getEmail(),
-                        request.getPassword(),
-                        "Test Carrier Co",
-                        "MC-" + Math.abs(request.getEmail().hashCode()),
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null
-                );
+                        request.getEmail(), request.getPassword(),
+                        "DOT-" + emailHash, "MC-" + emailHash,
+                        null, null, null, null, null, null, null, null, null, null, null);
                 yield registrationService.registerCarrierWithPreview(req);
             }
             default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid role. Expected BROKER or CARRIER");
         };
+
+        // Send verification email asynchronously
+        try {
+            User user = userRepository.findByEmail(request.getEmail())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "User not found after registration"));
+
+            sendVerificationEmail(user);
+        } catch (Exception e) {
+            // Do not fail registration if email sending fails; log the error
+            log.error("Failed to send verification email for email={}: {}", request.getEmail(), e.getMessage(), e);
+        }
+
+        return response;
+    }
+
+    /**
+     * Creates a fresh verification token and dispatches the email.
+     * Can also be called from a "resend verification" endpoint.
+     */
+    public void sendVerificationEmail(User user) {
+        SecurityToken token = securityTokenService.createEmailVerificationToken(user);
+
+        AccountVerificationEmailContext ctx = new AccountVerificationEmailContext();
+        ctx.init(user);
+        ctx.setFrom(appProperties.getMail().getFrom());
+        ctx.setToken(token.getToken());
+        ctx.buildVerificationUrl(appProperties.getFrontend().getBaseUrl());
+
+        emailService.sendEmail(ctx);
+        log.info("Verification email dispatched to userId={} email={}", user.getId(), user.getEmail());
     }
 }
+

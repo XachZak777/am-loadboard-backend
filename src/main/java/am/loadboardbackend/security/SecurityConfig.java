@@ -35,10 +35,16 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/validate/**",
                                 "/api/auth/**",
+                                "/api/auth/login",
+                                "/api/auth/register",
+                                "/api/auth/verify-email",
+                                "/api/auth/resend-verification",
+                                "/api/auth/forgot-password",
+                                "/api/auth/reset-password",
                                 "/api/carriers/register",
                                 "/api/brokers/register",
-                                "/api/auth/login",
-                                "/api/auth/register"
+                                "/api/loads/**",
+                                "/uploads/w9/**"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )

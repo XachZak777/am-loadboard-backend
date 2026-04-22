@@ -2,6 +2,8 @@ package am.loadboardbackend.dto.load;
 
 import lombok.Data;
 
+import java.time.LocalDate;
+
 @Data
 public class CreateLoadRequest {
     /** Pickup address */
@@ -32,4 +34,6 @@ public class CreateLoadRequest {
     private String description;
     private Double weight;
     private Double price;
+    private LocalDate pickupDate;
+    private LocalDate deliveryDate;
 }

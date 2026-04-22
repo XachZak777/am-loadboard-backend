@@ -29,7 +29,7 @@ public class ValidationServiceTest {
         content.setCarrier(carrier);
 
         FmcsaCarrierResponse resp = new FmcsaCarrierResponse();
-        resp.setContent(List.of(content));
+        resp.setContent(content);
 
         Mockito.when(client.fetchByMc("MC123")).thenReturn(resp);
 
@@ -56,7 +56,7 @@ public class ValidationServiceTest {
         content.setCarrier(carrier);
 
         FmcsaCarrierResponse resp = new FmcsaCarrierResponse();
-        resp.setContent(List.of(content));
+        resp.setContent(content);
 
     FmcsaAuthorityResponse auth = new FmcsaAuthorityResponse();
     FmcsaAuthorityResponse.Authority a = new FmcsaAuthorityResponse.Authority();

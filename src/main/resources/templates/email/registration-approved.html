@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Registration Approved</title>
+    <style>
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; background: #f4f4f5; margin: 0; padding: 0; }
+        .wrapper { max-width: 600px; margin: 40px auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+        .header { background: #16a34a; padding: 32px 40px; text-align: center; }
+        .header h1 { color: #fff; margin: 0; font-size: 22px; letter-spacing: .5px; }
+        .body { padding: 36px 40px; color: #374151; }
+        .body p { line-height: 1.65; margin: 0 0 16px; }
+        .btn { display: inline-block; margin: 24px 0; padding: 14px 32px; background: #1d4ed8; color: #fff !important; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 15px; }
+        .highlight { background: #f0fdf4; border-left: 4px solid #16a34a; padding: 12px 16px; border-radius: 4px; margin: 20px 0; }
+        .footer { padding: 20px 40px; background: #f9fafb; text-align: center; font-size: 12px; color: #9ca3af; }
+    </style>
+</head>
+<body>
+<div class="wrapper">
+    <div class="header">
+        <h1>✅ LoadBoard — Registration Approved</h1>
+    </div>
+    <div class="body">
+        <p>Hi <strong th:text="${firstName}">there</strong>,</p>
+        <p>Great news! Your <span th:text="${role}">account</span> registration on LoadBoard has been
+            <strong>approved</strong> by our admin team.</p>
+
+        <div class="highlight" th:if="${companyName != null and !#strings.isEmpty(companyName)}">
+            <strong>Company:</strong> <span th:text="${companyName}"></span><br/>
+            <strong>Account type:</strong> <span th:text="${role}"></span>
+        </div>
+
+        <p>You can now log in and start using the platform. Welcome aboard!</p>
+
+        <a href="#" class="btn">Log In to LoadBoard</a>
+
+        <p>If you have any questions, feel free to reach out to our support team.</p>
+    </div>
+    <div class="footer">
+        &copy; 2026 LoadBoard. All rights reserved.
+    </div>
+</div>
+</body>
+</html>

@@ -1,5 +1,6 @@
 package am.loadboardbackend.controller;
 
+import am.loadboardbackend.dto.admin.AdminUserDto;
 import am.loadboardbackend.dto.load.LoadPostingDto;
 import am.loadboardbackend.model.AuditLog;
 import am.loadboardbackend.model.Broker;
@@ -7,6 +8,7 @@ import am.loadboardbackend.model.Carrier;
 import am.loadboardbackend.model.LoadPosting;
 import am.loadboardbackend.model.User;
 import am.loadboardbackend.service.AdminService;
+import am.loadboardbackend.service.AdminUserService;
 import am.loadboardbackend.service.UserApprovalService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,6 +18,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -25,10 +28,43 @@ import java.util.UUID;
 @PreAuthorize("hasRole('ADMIN')")
 public class AdminController {
 
-    private final AdminService adminService;
+    private final AdminService       adminService;
+    private final AdminUserService   adminUserService;
     private final UserApprovalService userApprovalService;
 
-    // Carrier endpoints
+    // ── Unified user list ────────────────────────────────────────────────────
+
+    /**
+     * GET /api/admin/users
+     * Returns all carriers and brokers with their profile fields and uploaded documents.
+     * This is the primary endpoint for the admin registration-review panel.
+     */
+    @GetMapping("/users")
+    public ResponseEntity<List<AdminUserDto>> getAllUsers() {
+        return ResponseEntity.ok(adminUserService.getAllUsers());
+    }
+
+    /**
+     * GET /api/admin/users/{id}
+     * Full detail of one user (for the admin review drawer/page).
+     */
+    @GetMapping("/users/{id}")
+    public ResponseEntity<AdminUserDto> getUser(@PathVariable UUID id) {
+        return ResponseEntity.ok(adminUserService.getUserById(id));
+    }
+
+    /**
+     * DELETE /api/admin/users/{id}
+     * Hard-delete a user and their linked carrier/broker record + documents.
+     */
+    @DeleteMapping("/users/{id}")
+    public ResponseEntity<Void> deleteUser(@PathVariable UUID id) {
+        adminUserService.deleteUser(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    // ── Carrier endpoints ────────────────────────────────────────────────────
+
     @GetMapping("/carriers")
     public ResponseEntity<List<Carrier>> getAllCarriers() {
         return ResponseEntity.ok(adminService.getAllCarriers());
@@ -45,7 +81,22 @@ public class AdminController {
         return ResponseEntity.noContent().build();
     }
 
-    // Broker endpoints
+    /** POST /api/admin/carriers/{id}/approve — approve the carrier's user account. */
+    @PostMapping("/carriers/{id}/approve")
+    public ResponseEntity<Map<String, String>> approveCarrier(@PathVariable UUID id) {
+        userApprovalService.approveByCarrierId(id);
+        return ResponseEntity.ok(Map.of("message", "Carrier approved"));
+    }
+
+    /** POST /api/admin/carriers/{id}/decline — decline the carrier's registration. */
+    @PostMapping("/carriers/{id}/decline")
+    public ResponseEntity<Map<String, String>> declineCarrier(@PathVariable UUID id) {
+        userApprovalService.declineByCarrierId(id);
+        return ResponseEntity.ok(Map.of("message", "Carrier declined"));
+    }
+
+    // ── Broker endpoints ─────────────────────────────────────────────────────
+
     @GetMapping("/brokers")
     public ResponseEntity<List<Broker>> getAllBrokers() {
         return ResponseEntity.ok(adminService.getAllBrokers());
@@ -62,7 +113,22 @@ public class AdminController {
         return ResponseEntity.noContent().build();
     }
 
-    // User approval endpoints
+    /** POST /api/admin/brokers/{id}/approve — approve the broker's user account. */
+    @PostMapping("/brokers/{id}/approve")
+    public ResponseEntity<Map<String, String>> approveBroker(@PathVariable UUID id) {
+        userApprovalService.approveByBrokerId(id);
+        return ResponseEntity.ok(Map.of("message", "Broker approved"));
+    }
+
+    /** POST /api/admin/brokers/{id}/decline — decline the broker's registration. */
+    @PostMapping("/brokers/{id}/decline")
+    public ResponseEntity<Map<String, String>> declineBroker(@PathVariable UUID id) {
+        userApprovalService.declineByBrokerId(id);
+        return ResponseEntity.ok(Map.of("message", "Broker declined"));
+    }
+
+    // ── Legacy user-level approval (by user id) ──────────────────────────────
+
     @PostMapping("/users/{id}/approve")
     public ResponseEntity<User> approveUser(@PathVariable UUID id) {
         return ResponseEntity.ok(userApprovalService.approveUser(id));
@@ -73,7 +139,8 @@ public class AdminController {
         return ResponseEntity.ok(userApprovalService.rejectUser(id));
     }
 
-    // User history endpoints
+    // ── User history / audit log ─────────────────────────────────────────────
+
     @GetMapping("/users/{id}/history")
     public ResponseEntity<List<AuditLog>> getUserHistory(@PathVariable UUID id) {
         return ResponseEntity.ok(adminService.getUserHistory(id));
@@ -84,7 +151,8 @@ public class AdminController {
         return ResponseEntity.ok(adminService.getEntityHistory(id));
     }
 
-    // Load management endpoints
+    // ── Load management ──────────────────────────────────────────────────────
+
     @GetMapping("/loads")
     public ResponseEntity<List<LoadPosting>> getAllLoads() {
         return ResponseEntity.ok(adminService.getAllLoads());

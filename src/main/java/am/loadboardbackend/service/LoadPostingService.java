@@ -2,6 +2,7 @@ package am.loadboardbackend.service;
 
 import am.loadboardbackend.dto.load.CreateLoadRequest;
 import am.loadboardbackend.dto.load.LoadPostingDto;
+import am.loadboardbackend.dto.load.CarrierBidWithLoadDto;
 import am.loadboardbackend.model.*;
 import am.loadboardbackend.repository.LoadPostingRepository;
 import am.loadboardbackend.repository.CarrierRepository;
@@ -72,6 +73,8 @@ public class LoadPostingService {
         load.setDescription(req.getDescription());
         load.setWeight(req.getWeight());
         load.setPrice(req.getPrice());
+        load.setPickupDate(req.getPickupDate());
+        load.setDeliveryDate(req.getDeliveryDate());
 
         LoadPosting saved = loadRepo.save(load);
         return toDto(saved);
@@ -114,6 +117,8 @@ public class LoadPostingService {
         load.setDescription(req.getDescription());
         load.setWeight(req.getWeight());
         load.setPrice(req.getPrice());
+        load.setPickupDate(req.getPickupDate());
+        load.setDeliveryDate(req.getDeliveryDate());
 
         LoadPosting saved = loadRepo.save(load);
         return toDto(saved);
@@ -149,6 +154,44 @@ public class LoadPostingService {
         return loadRepo.findAll().stream().map(this::toDto).collect(Collectors.toList());
     }
 
+    /**
+     * Returns all bids placed by the currently authenticated carrier,
+     * with embedded load info so the frontend needs only one request.
+     */
+    public List<CarrierBidWithLoadDto> getMyCarrierBids() {
+        User current = authService.currentUserOrThrow();
+        if (current.getCarrier() == null) {
+            throw new ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN, "Only carriers can access their bids");
+        }
+        return bidRepo.findAllByCarrierId(current.getCarrier().getId()).stream()
+                .map(bid -> {
+                    LoadPosting load = bid.getLoad();
+                    return new CarrierBidWithLoadDto(
+                            bid.getId(),
+                            load.getId(),
+                            bid.getAmount(),
+                            bid.isBookNow(),
+                            bid.getStatus().name(),
+                            bid.getCreatedAt(),
+                            bid.getUpdatedAt(),
+                            load.getVehicle() != null ? load.getVehicle().getMake() : null,
+                            load.getVehicle() != null ? load.getVehicle().getModel() : null,
+                            load.getVehicle() != null ? load.getVehicle().getYear() : null,
+                            load.getPickupAddress() != null ? load.getPickupAddress().getCity() : null,
+                            load.getPickupAddress() != null ? load.getPickupAddress().getState() : null,
+                            load.getDropAddress() != null ? load.getDropAddress().getCity() : null,
+                            load.getDropAddress() != null ? load.getDropAddress().getState() : null,
+                            load.getPrice(),
+                            load.getCreatedAt(),
+                            load.getPickupDate(),
+                            load.getDeliveryDate(),
+                            load.getStatus() != null ? load.getStatus().name() : null,
+                            load.getBroker() != null ? load.getBroker().getId() : null
+                    );
+                })
+                .collect(Collectors.toList());
+    }
+
     private LoadPostingDto toDto(LoadPosting p) {
         LoadPostingDto dto = new LoadPostingDto();
         dto.setId(p.getId());
@@ -178,7 +221,10 @@ public class LoadPostingService {
         dto.setDescription(p.getDescription());
         dto.setWeight(p.getWeight());
         dto.setPrice(p.getPrice());
+        dto.setPickupDate(p.getPickupDate());
+        dto.setDeliveryDate(p.getDeliveryDate());
         dto.setCreatedAt(p.getCreatedAt());
+        if (p.getBroker() != null) dto.setBrokerId(p.getBroker().getId());
         if (p.getAssignedCarrier() != null) dto.setAssignedCarrierId(p.getAssignedCarrier().getId());
         dto.setStatus(p.getStatus() != null ? p.getStatus().name() : null);
         return dto;
