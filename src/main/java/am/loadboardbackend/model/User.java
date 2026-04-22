@@ -59,6 +59,16 @@ public class User extends Auditable<String> {
 
     private LocalDateTime adminApprovedAt;
 
+    /**
+     * Set to true when an admin actively declines/rejects this registration.
+     * Distinguishes "never reviewed" (pending) from "reviewed and rejected".
+     * Reset to false when the user is subsequently approved.
+     */
+    @Column(nullable = false, columnDefinition = "boolean not null default false")
+    private boolean declined = false;
+
+    private LocalDateTime declinedAt;
+
     @Column(nullable = false, columnDefinition = "boolean not null default false")
     private boolean loginDisabled = false;
 

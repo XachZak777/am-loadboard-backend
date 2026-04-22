@@ -9,4 +9,5 @@ import java.util.UUID;
 public interface BidRepository extends JpaRepository<Bid, UUID> {
     List<Bid> findAllByLoadId(UUID loadId);
     List<Bid> findAllByCarrierId(UUID carrierId);
+    void deleteAllByLoadId(UUID loadId);
 }

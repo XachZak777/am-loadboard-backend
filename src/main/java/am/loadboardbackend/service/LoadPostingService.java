@@ -17,6 +17,7 @@ import java.util.stream.Collectors;
 import am.loadboardbackend.repository.BidRepository;
 import am.loadboardbackend.dto.load.CreateBidRequest;
 import am.loadboardbackend.dto.load.BidResponse;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class LoadPostingService {
@@ -124,12 +125,19 @@ public class LoadPostingService {
         return toDto(saved);
     }
 
+    @Transactional
     public void deleteLoad(UUID id) {
         User current = authService.currentUserOrThrow();
         if (current.getBroker() == null) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only brokers can delete loads");
         }
-        LoadPosting load = loadRepo.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Load not found"));
+        LoadPosting load = loadRepo.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Load not found"));
+        if (!load.getBroker().getId().equals(current.getBroker().getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only delete your own loads");
+        }
+        // Remove all bids first to avoid FK constraint violations
+        bidRepo.deleteAllByLoadId(id);
         loadRepo.delete(load);
     }
 
@@ -152,6 +160,15 @@ public class LoadPostingService {
 
     public List<LoadPostingDto> listAllPublic() {
         return loadRepo.findAll().stream().map(this::toDto).collect(Collectors.toList());
+    }
+
+    public List<LoadPostingDto> listMyBrokerLoads() {
+        User current = authService.currentUserOrThrow();
+        if (current.getBroker() == null) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only brokers can access this endpoint");
+        }
+        return loadRepo.findAllByBrokerId(current.getBroker().getId())
+                .stream().map(this::toDto).collect(Collectors.toList());
     }
 
     /**

@@ -30,6 +30,8 @@ public class UserApprovalService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         user.setAdminApproved(true);
         user.setAdminApprovedAt(LocalDateTime.now());
+        user.setDeclined(false);
+        user.setDeclinedAt(null);
         User saved = userRepository.save(user);
         sendApprovalEmail(saved);
         return saved;
@@ -41,6 +43,8 @@ public class UserApprovalService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         user.setAdminApproved(false);
         user.setAdminApprovedAt(null);
+        user.setDeclined(true);
+        user.setDeclinedAt(LocalDateTime.now());
         User saved = userRepository.save(user);
         sendDeclinedEmail(saved);
         return saved;
@@ -54,6 +58,8 @@ public class UserApprovalService {
                         HttpStatus.NOT_FOUND, "User with carrier id " + carrierId + " not found"));
         user.setAdminApproved(true);
         user.setAdminApprovedAt(LocalDateTime.now());
+        user.setDeclined(false);
+        user.setDeclinedAt(null);
         User saved = userRepository.save(user);
         sendApprovalEmail(saved);
         return saved;
@@ -67,6 +73,8 @@ public class UserApprovalService {
                         HttpStatus.NOT_FOUND, "User with broker id " + brokerId + " not found"));
         user.setAdminApproved(true);
         user.setAdminApprovedAt(LocalDateTime.now());
+        user.setDeclined(false);
+        user.setDeclinedAt(null);
         User saved = userRepository.save(user);
         sendApprovalEmail(saved);
         return saved;
@@ -80,6 +88,8 @@ public class UserApprovalService {
                         HttpStatus.NOT_FOUND, "User with carrier id " + carrierId + " not found"));
         user.setAdminApproved(false);
         user.setAdminApprovedAt(null);
+        user.setDeclined(true);
+        user.setDeclinedAt(LocalDateTime.now());
         User saved = userRepository.save(user);
         sendDeclinedEmail(saved);
         return saved;
@@ -93,9 +103,45 @@ public class UserApprovalService {
                         HttpStatus.NOT_FOUND, "User with broker id " + brokerId + " not found"));
         user.setAdminApproved(false);
         user.setAdminApprovedAt(null);
+        user.setDeclined(true);
+        user.setDeclinedAt(LocalDateTime.now());
         User saved = userRepository.save(user);
         sendDeclinedEmail(saved);
         return saved;
+    }
+
+    /**
+     * Revoke approval for the carrier's user — moves them back to Pending
+     * (adminApproved=false, declined=false). No email is sent.
+     */
+    @Transactional
+    public User revokeByCarrierId(UUID carrierId) {
+        User user = userRepository.findByCarrierId(carrierId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "User with carrier id " + carrierId + " not found"));
+        user.setAdminApproved(false);
+        user.setAdminApprovedAt(null);
+        user.setDeclined(false);
+        user.setDeclinedAt(null);
+        log.info("Revoked approval for carrierId={} userId={}", carrierId, user.getId());
+        return userRepository.save(user);
+    }
+
+    /**
+     * Revoke approval for the broker's user — moves them back to Pending
+     * (adminApproved=false, declined=false). No email is sent.
+     */
+    @Transactional
+    public User revokeByBrokerId(UUID brokerId) {
+        User user = userRepository.findByBrokerId(brokerId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "User with broker id " + brokerId + " not found"));
+        user.setAdminApproved(false);
+        user.setAdminApprovedAt(null);
+        user.setDeclined(false);
+        user.setDeclinedAt(null);
+        log.info("Revoked approval for brokerId={} userId={}", brokerId, user.getId());
+        return userRepository.save(user);
     }
 
     // ── email helpers ─────────────────────────────────────────────────────────

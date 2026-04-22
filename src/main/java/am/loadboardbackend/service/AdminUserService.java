@@ -38,6 +38,33 @@ public class AdminUserService {
                 .toList();
     }
 
+    /** Returns only users who have been approved (adminApproved = true). */
+    public List<AdminUserDto> getApprovedUsers() {
+        log.info("Admin fetching approved users");
+        return userRepository.findByRoleNotAndAdminApprovedTrue(UserRole.ROLE_ADMIN)
+                .stream()
+                .map(this::toDto)
+                .toList();
+    }
+
+    /** Returns users who have not yet been reviewed (adminApproved = false AND declined = false). */
+    public List<AdminUserDto> getPendingUsers() {
+        log.info("Admin fetching pending users");
+        return userRepository.findByRoleNotAndAdminApprovedFalseAndDeclinedFalse(UserRole.ROLE_ADMIN)
+                .stream()
+                .map(this::toDto)
+                .toList();
+    }
+
+    /** Returns users whose registration was actively rejected (declined = true). */
+    public List<AdminUserDto> getRejectedUsers() {
+        log.info("Admin fetching rejected users");
+        return userRepository.findByRoleNotAndDeclinedTrue(UserRole.ROLE_ADMIN)
+                .stream()
+                .map(this::toDto)
+                .toList();
+    }
+
     /**
      * Returns a single user's full detail.
      */
@@ -155,6 +182,8 @@ public class AdminUserService {
                 user.isAdminApproved(),
                 user.getAdminApprovedAt(),
                 user.isEmailVerified(),
+                user.isDeclined(),
+                user.getDeclinedAt(),
                 user.getCreatedAt(),
                 profileId,
                 companyName,

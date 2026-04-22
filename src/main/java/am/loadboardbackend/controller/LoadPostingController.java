@@ -48,6 +48,11 @@ public class LoadPostingController {
         return ResponseEntity.ok(list);
     }
 
+    @GetMapping("/broker/my-loads")
+    public ResponseEntity<List<LoadPostingDto>> myBrokerLoads() {
+        return ResponseEntity.ok(loadService.listMyBrokerLoads());
+    }
+
     @PostMapping("/bid")
     public ResponseEntity<?> placeBid(@RequestBody am.loadboardbackend.dto.load.CreateBidRequest req) {
         var resp = loadService.placeBid(req);

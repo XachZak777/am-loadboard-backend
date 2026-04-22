@@ -170,3 +170,15 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     details     TEXT,
     created_at  TIMESTAMP NOT NULL DEFAULT now()
 );
+
+-- Fix bids FK: drop old constraint and re-add with ON DELETE CASCADE
+--   so deleting a load automatically removes its bids at the DB level.
+ALTER TABLE bids DROP CONSTRAINT IF EXISTS bids_load_id_fkey;
+ALTER TABLE bids ADD CONSTRAINT bids_load_id_fkey
+    FOREIGN KEY (load_id) REFERENCES loads(id) ON DELETE CASCADE;
+
+-- 16. Add declined / declined_at columns to users (registration rejection tracking)
+ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS declined BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS declined_at TIMESTAMP;

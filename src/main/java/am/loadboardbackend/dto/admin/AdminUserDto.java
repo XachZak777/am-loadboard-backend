@@ -17,6 +17,8 @@ public record AdminUserDto(
         boolean adminApproved,
         LocalDateTime adminApprovedAt,
         boolean emailVerified,
+        boolean declined,
+        LocalDateTime declinedAt,
         LocalDateTime createdAt,
 
         // ── Profile (carrier or broker) ──────────────────────────────────

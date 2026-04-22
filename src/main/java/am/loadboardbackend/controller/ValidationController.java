@@ -4,8 +4,10 @@ import am.loadboardbackend.dto.validation.LookupRequest;
 import am.loadboardbackend.dto.validation.LookupResponse;
 import am.loadboardbackend.dto.validation.SaveFromValidationRequest;
 import am.loadboardbackend.dto.auth.LoginResponse;
+import am.loadboardbackend.repository.UserRepository;
 import am.loadboardbackend.service.BrokerValidationService;
 import am.loadboardbackend.service.CarrierValidationService;
+import am.loadboardbackend.service.PublicRegistrationService;
 import am.loadboardbackend.service.RegistrationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +27,8 @@ public class ValidationController {
     private final CarrierValidationService carrierValidationService;
     private final BrokerValidationService brokerValidationService;
     private final RegistrationService registrationService;
+    private final PublicRegistrationService publicRegistrationService;
+    private final UserRepository userRepository;
 
     @PostMapping(value = "/carrier", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<LookupResponse> validateCarrier(@RequestBody LookupRequest req) {
@@ -46,6 +50,7 @@ public class ValidationController {
     public ResponseEntity<LoginResponse> saveCarrierFromValidation(@RequestBody SaveFromValidationRequest req) {
         log.info("Save request for carrier validationId={} email={}", req.validationId(), req.email());
         LoginResponse resp = registrationService.registerCarrierFromValidation(req.validationId(), req.email(), req.password());
+        sendVerificationEmailQuietly(req.email());
         return ResponseEntity.ok().body(resp);
     }
 
@@ -53,6 +58,15 @@ public class ValidationController {
     public ResponseEntity<LoginResponse> saveBrokerFromValidation(@RequestBody SaveFromValidationRequest req) {
         log.info("Save request for broker validationId={} email={}", req.validationId(), req.email());
         LoginResponse resp = registrationService.registerBrokerFromValidation(req.validationId(), req.email(), req.password());
+        sendVerificationEmailQuietly(req.email());
         return ResponseEntity.ok().body(resp);
+    }
+
+    private void sendVerificationEmailQuietly(String email) {
+        try {
+            userRepository.findByEmail(email).ifPresent(publicRegistrationService::sendVerificationEmail);
+        } catch (Exception e) {
+            log.error("Failed to send verification email for email={}: {}", email, e.getMessage(), e);
+        }
     }
 }

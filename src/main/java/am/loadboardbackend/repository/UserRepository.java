@@ -14,4 +14,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     Optional<User> findByCarrierId(UUID carrierId);
     Optional<User> findByBrokerId(UUID brokerId);
     List<User> findByRoleNot(UserRole role);
+    List<User> findByRoleNotAndAdminApprovedTrue(UserRole role);
+    List<User> findByRoleNotAndAdminApprovedFalseAndDeclinedFalse(UserRole role);
+    List<User> findByRoleNotAndDeclinedTrue(UserRole role);
 }

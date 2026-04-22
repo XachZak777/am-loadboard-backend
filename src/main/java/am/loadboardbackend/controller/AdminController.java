@@ -44,6 +44,24 @@ public class AdminController {
         return ResponseEntity.ok(adminUserService.getAllUsers());
     }
 
+    /** GET /api/admin/users/approved — only users with adminApproved = true. */
+    @GetMapping("/users/approved")
+    public ResponseEntity<List<AdminUserDto>> getApprovedUsers() {
+        return ResponseEntity.ok(adminUserService.getApprovedUsers());
+    }
+
+    /** GET /api/admin/users/pending — users not yet reviewed (adminApproved=false AND declined=false). */
+    @GetMapping("/users/pending")
+    public ResponseEntity<List<AdminUserDto>> getPendingUsers() {
+        return ResponseEntity.ok(adminUserService.getPendingUsers());
+    }
+
+    /** GET /api/admin/users/rejected — users whose registration was actively declined. */
+    @GetMapping("/users/rejected")
+    public ResponseEntity<List<AdminUserDto>> getRejectedUsers() {
+        return ResponseEntity.ok(adminUserService.getRejectedUsers());
+    }
+
     /**
      * GET /api/admin/users/{id}
      * Full detail of one user (for the admin review drawer/page).
@@ -95,6 +113,13 @@ public class AdminController {
         return ResponseEntity.ok(Map.of("message", "Carrier declined"));
     }
 
+    /** POST /api/admin/carriers/{id}/revoke — revoke approval, moving carrier back to Pending. */
+    @PostMapping("/carriers/{id}/revoke")
+    public ResponseEntity<Map<String, String>> revokeCarrier(@PathVariable UUID id) {
+        userApprovalService.revokeByCarrierId(id);
+        return ResponseEntity.ok(Map.of("message", "Carrier approval revoked"));
+    }
+
     // ── Broker endpoints ─────────────────────────────────────────────────────
 
     @GetMapping("/brokers")
@@ -125,6 +150,13 @@ public class AdminController {
     public ResponseEntity<Map<String, String>> declineBroker(@PathVariable UUID id) {
         userApprovalService.declineByBrokerId(id);
         return ResponseEntity.ok(Map.of("message", "Broker declined"));
+    }
+
+    /** POST /api/admin/brokers/{id}/revoke — revoke approval, moving broker back to Pending. */
+    @PostMapping("/brokers/{id}/revoke")
+    public ResponseEntity<Map<String, String>> revokeBroker(@PathVariable UUID id) {
+        userApprovalService.revokeByBrokerId(id);
+        return ResponseEntity.ok(Map.of("message", "Broker approval revoked"));
     }
 
     // ── Legacy user-level approval (by user id) ──────────────────────────────

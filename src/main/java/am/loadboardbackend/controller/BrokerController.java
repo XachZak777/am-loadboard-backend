@@ -125,5 +125,39 @@ public class BrokerController {
                 file, user.getBroker().getId(), "BROKER");
         return ResponseEntity.ok(response);
     }
+
+    /**
+     * POST /api/brokers/documents/insurance — upload Insurance Certificate (PDF/DOC/DOCX, max 5MB).
+     */
+    @PostMapping("/documents/insurance")
+    public ResponseEntity<DocumentUploadResponse> uploadInsurance(
+            @AuthenticationPrincipal User user,
+            @RequestParam("file") MultipartFile file) {
+        if (user.getBroker() == null) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST,
+                    "Complete broker profile before uploading documents");
+        }
+        DocumentUploadResponse response = documentStorageService.storeInsurance(
+                file, user.getBroker().getId(), "BROKER");
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * POST /api/brokers/documents/mc-authority — upload MC Authority document (PDF/DOC/DOCX, max 5MB).
+     */
+    @PostMapping("/documents/mc-authority")
+    public ResponseEntity<DocumentUploadResponse> uploadMcAuthority(
+            @AuthenticationPrincipal User user,
+            @RequestParam("file") MultipartFile file) {
+        if (user.getBroker() == null) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST,
+                    "Complete broker profile before uploading documents");
+        }
+        DocumentUploadResponse response = documentStorageService.storeMcAuthority(
+                file, user.getBroker().getId(), "BROKER");
+        return ResponseEntity.ok(response);
+    }
 }
 
