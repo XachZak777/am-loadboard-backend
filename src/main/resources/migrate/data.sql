@@ -84,9 +84,23 @@ CREATE TABLE loads (
         vehicle_model TEXT,
         vehicle_year INT,
 
-        description TEXT,
-        weight DOUBLE PRECISION,
-        price DOUBLE PRECISION,
-
         created_at TIMESTAMP DEFAULT now()
 );
+
+-- Documents table: stores file content in PostgreSQL BYTEA
+CREATE TABLE documents (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        owner_id UUID NOT NULL,
+        owner_type VARCHAR(20) NOT NULL,
+        document_type VARCHAR(50) NOT NULL DEFAULT 'W9',
+        original_name VARCHAR(255) NOT NULL,
+        file_content BYTEA NOT NULL,
+        content_type VARCHAR(100) NOT NULL,
+        file_url VARCHAR(500) NOT NULL,
+        stored_path VARCHAR(500),
+        uploaded_at TIMESTAMP NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_documents_owner_id ON documents(owner_id);
+CREATE INDEX idx_documents_type ON documents(document_type);
+CREATE INDEX idx_documents_owner_type ON documents(owner_id, document_type);

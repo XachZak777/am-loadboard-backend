@@ -44,7 +44,7 @@ public class SecurityConfig {
                                 "/api/carriers/register",
                                 "/api/brokers/register",
                                 "/api/loads/**",
-                                "/uploads/w9/**"
+                                "/api/files/**"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )

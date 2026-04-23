@@ -12,14 +12,15 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.Set;
 import java.util.UUID;
 
+/**
+ * Stores carrier/broker compliance documents (W9, Insurance, MC Authority) in PostgreSQL.
+ * File content is stored as BYTEA; metadata (type, owner, download URL) is persisted in PostgreSQL.
+ *
+ * <p>Download URL pattern: {@code /api/files/{documentId}}
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -27,96 +28,91 @@ public class DocumentStorageService {
 
     private static final long MAX_SIZE_BYTES = 5 * 1024 * 1024L; // 5 MB
     private static final Set<String> ALLOWED_EXTENSIONS = Set.of("pdf", "doc", "docx");
-    private static final String BASE_UPLOAD_DIR = "uploads";
 
     private final DocumentRepository documentRepository;
+    private final DocumentFileService documentFileService;
 
-    /**
-     * Store a W9 file for the given owner and persist metadata.
-     */
+    // ── Public typed helpers ──────────────────────────────────────────────────
+
     @Transactional
     public DocumentUploadResponse storeW9(MultipartFile file, UUID ownerId, String ownerType) {
-        return storeDocument(file, ownerId, ownerType, "W9", BASE_UPLOAD_DIR + "/w9");
+        return storeDocument(file, ownerId, ownerType, "W9", "w9");
     }
 
-    /**
-     * Store an Insurance Certificate file for the given owner and persist metadata.
-     */
     @Transactional
     public DocumentUploadResponse storeInsurance(MultipartFile file, UUID ownerId, String ownerType) {
-        return storeDocument(file, ownerId, ownerType, "INSURANCE", BASE_UPLOAD_DIR + "/insurance");
+        return storeDocument(file, ownerId, ownerType, "INSURANCE", "insurance");
     }
 
-    /**
-     * Store an MC Authority file for the given owner and persist metadata.
-     */
     @Transactional
     public DocumentUploadResponse storeMcAuthority(MultipartFile file, UUID ownerId, String ownerType) {
-        return storeDocument(file, ownerId, ownerType, "MC_AUTHORITY", BASE_UPLOAD_DIR + "/mc-authority");
+        return storeDocument(file, ownerId, ownerType, "MC_AUTHORITY", "mc-authority");
     }
 
     /**
-     * Generic document storage — store a file of any documentType.
+     * Generic document storage — validates, stores file in PostgreSQL BYTEA and persists metadata.
      *
      * @param file         the uploaded file
      * @param ownerId      UUID of the carrier or broker record
      * @param ownerType    "CARRIER" or "BROKER"
      * @param documentType e.g. "W9", "INSURANCE", "MC_AUTHORITY"
-     * @param uploadDir    relative directory path (e.g. "uploads/w9")
+     * @param folder       folder tag for organization (unused in PostgreSQL but kept for API compatibility)
      * @return response DTO with fileId, fileName, fileUrl, uploadedAt
      */
     @Transactional
     public DocumentUploadResponse storeDocument(MultipartFile file, UUID ownerId, String ownerType,
-                                                String documentType, String uploadDir) {
+                                                String documentType, String folder) {
         validateFile(file);
 
         String originalFilename = StringUtils.cleanPath(
                 file.getOriginalFilename() != null ? file.getOriginalFilename() : documentType.toLowerCase());
         String extension = extractExtension(originalFilename);
+        String contentType = resolveContentType(extension);
 
-        UUID fileId = UUID.randomUUID();
-        String storedFileName = fileId + "." + extension;
-        Path uploadPath = Paths.get(uploadDir);
-        Path destination = uploadPath.resolve(storedFileName);
+        // Read file content into memory
+        byte[] fileContent = documentFileService.readFileContent(file);
 
-        try {
-            Files.createDirectories(uploadPath);
-            Files.copy(file.getInputStream(), destination, StandardCopyOption.REPLACE_EXISTING);
-            log.info("{} file stored: path={} ownerId={} ownerType={}", documentType, destination, ownerId, ownerType);
-        } catch (IOException e) {
-            log.error("Failed to store {} file for ownerId={}", documentType, ownerId, e);
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to store file");
-        }
-
-        String fileUrl = "/" + uploadDir + "/" + storedFileName;
-
+        // Persist document with file content to PostgreSQL
         Document document = new Document();
-        // Do NOT set the ID manually — let @GeneratedValue assign it.
         document.setOwnerId(ownerId);
         document.setOwnerType(ownerType);
         document.setDocumentType(documentType);
         document.setOriginalName(originalFilename);
-        document.setStoredPath(destination.toString());
-        document.setFileUrl(fileUrl);
+        document.setFileContent(fileContent);
+        document.setContentType(contentType);
+    document.setFileUrl("/api/files/temp"); // temp URL, will be updated after save
+    // stored_path is a NOT NULL DB column (kept for compatibility). Set a temporary
+    // value so the initial insert doesn't violate the constraint; we'll update
+    // it to the final path after obtaining the generated ID.
+    document.setStoredPath("/api/files/temp");
 
         Document saved = documentRepository.save(document);
-        log.info("Document metadata persisted id={} type={} ownerId={}", saved.getId(), documentType, ownerId);
+        
+    // Update fileUrl and stored_path with document ID
+        String fileUrl = "/api/files/" + saved.getId();
+        saved.setFileUrl(fileUrl);
+    saved.setStoredPath(fileUrl);
+        documentRepository.save(saved);
+        
+        log.info("Document stored in PostgreSQL id={} type={} ownerId={} size={}",
+                saved.getId(), documentType, ownerId, fileContent.length);
 
         return new DocumentUploadResponse(
                 saved.getId().toString(),
-                storedFileName,
+                originalFilename,
                 fileUrl,
                 saved.getUploadedAt().toString()
         );
     }
+
+    // ── Private helpers ───────────────────────────────────────────────────────
 
     private void validateFile(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "File is required");
         }
         if (file.getSize() > MAX_SIZE_BYTES) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "File size exceeds 5MB limit");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "File size exceeds 5 MB limit");
         }
         String ext = extractExtension(StringUtils.cleanPath(
                 file.getOriginalFilename() != null ? file.getOriginalFilename() : ""));
@@ -131,5 +127,14 @@ public class DocumentStorageService {
         return (dot >= 0 && dot < filename.length() - 1)
                 ? filename.substring(dot + 1).toLowerCase()
                 : "";
+    }
+
+    private String resolveContentType(String extension) {
+        return switch (extension.toLowerCase()) {
+            case "pdf"  -> "application/pdf";
+            case "doc"  -> "application/msword";
+            case "docx" -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+            default     -> "application/octet-stream";
+        };
     }
 }

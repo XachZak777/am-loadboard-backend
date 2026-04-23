@@ -37,7 +37,7 @@ public class AdminApprovalFilter extends OncePerRequestFilter {
         if (path.equals("/api/carriers/profile") || path.equals("/api/brokers/profile")
                 || path.startsWith("/api/carriers/documents/")
                 || path.startsWith("/api/brokers/documents/")
-                || path.startsWith("/uploads/w9/")) {
+                || path.startsWith("/api/files/")) {
             filterChain.doFilter(request, response);
             return;
         }

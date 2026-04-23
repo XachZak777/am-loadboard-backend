@@ -34,8 +34,20 @@ public class Document {
     @Column(name = "original_name", nullable = false)
     private String originalName;
 
+    /**
+     * Previously used to reference external storage (GridFS ObjectId). Kept for DB compatibility.
+     */
     @Column(name = "stored_path", nullable = false, length = 500)
     private String storedPath;
+
+    /**
+     * File content stored as BYTEA in PostgreSQL (replaces GridFS)
+     */
+    @Column(name = "file_content", nullable = false, columnDefinition = "BYTEA")
+    private byte[] fileContent;
+
+    @Column(name = "content_type", nullable = false, length = 100)
+    private String contentType;
 
     @Column(name = "file_url", nullable = false, length = 500)
     private String fileUrl;

@@ -204,6 +204,7 @@
             <version>3.20.0</version>
             <scope>compile</scope>
         </dependency>
+
         <dependency>
             <groupId>com.sun.xml.messaging.saaj</groupId>
             <artifactId>saaj-impl</artifactId>
