@@ -46,16 +46,14 @@ public class EmailVerificationService {
         log.info("Email verified for userId={}", user.getId());
     }
 
-    /** Resends the verification email to a user who hasn't verified yet. */
+    /**
+     * Resends the verification email. Always returns without error even when the
+     * email is unknown or already verified — prevents user enumeration.
+     */
     public void resendVerificationEmail(String email) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
-
-        if (user.isEmailVerified()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Email is already verified");
-        }
-
-        publicRegistrationService.sendVerificationEmail(user);
+        userRepository.findByEmail(email)
+                .filter(user -> !user.isEmailVerified())
+                .ifPresent(publicRegistrationService::sendVerificationEmail);
     }
 
     // ── Forgot password ───────────────────────────────────────────────────────

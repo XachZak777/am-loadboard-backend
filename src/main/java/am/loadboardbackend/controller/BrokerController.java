@@ -6,7 +6,7 @@ import am.loadboardbackend.dto.broker.BrokerPublicDto;
 import am.loadboardbackend.dto.broker.BrokerResponseDto;
 import am.loadboardbackend.dto.broker.RegisterBrokerRequest;
 import am.loadboardbackend.dto.document.DocumentUploadResponse;
-import am.loadboardbackend.dto.load.LoadResponseDto;
+import am.loadboardbackend.dto.load.LoadPostingDto;
 import am.loadboardbackend.dto.load.CreateLoadRequest;
 import am.loadboardbackend.model.Broker;
 import am.loadboardbackend.model.User;
@@ -14,7 +14,7 @@ import am.loadboardbackend.repository.UserRepository;
 import am.loadboardbackend.service.BrokerProfileService;
 import am.loadboardbackend.service.BrokerService;
 import am.loadboardbackend.service.DocumentStorageService;
-import am.loadboardbackend.service.LoadService;
+import am.loadboardbackend.service.LoadPostingService;
 import am.loadboardbackend.service.RegistrationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+
 @RestController
 @RequestMapping("/api/brokers")
 @RequiredArgsConstructor
@@ -33,7 +34,7 @@ public class BrokerController {
 
     private final RegistrationService registrationService;
     private final BrokerService brokerService;
-    private final LoadService loadService;
+    private final LoadPostingService loadPostingService;
     private final BrokerProfileService brokerProfileService;
     private final DocumentStorageService documentStorageService;
     private final UserRepository userRepository;
@@ -85,16 +86,16 @@ public class BrokerController {
     }
 
     @PostMapping("/loads")
-    public LoadResponseDto createLoad(
+    public LoadPostingDto createLoad(
             @RequestBody CreateLoadRequest request,
             @AuthenticationPrincipal User user
     ) {
-        return loadService.create(request, user.getBroker());
+        return loadPostingService.createLoad(request);
     }
 
     @GetMapping("/loads")
-    public List<LoadResponseDto> myLoads(@AuthenticationPrincipal User user) {
-        return loadService.getByBroker(user.getBroker());
+    public List<LoadPostingDto> myLoads(@AuthenticationPrincipal User user) {
+        return loadPostingService.listMyBrokerLoads();
     }
 
     /**

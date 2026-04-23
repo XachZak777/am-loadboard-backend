@@ -1,11 +1,17 @@
 package am.loadboardbackend.service;
 
+import am.loadboardbackend.config.AppProperties;
 import am.loadboardbackend.dto.load.CreateLoadRequest;
 import am.loadboardbackend.dto.load.LoadPostingDto;
 import am.loadboardbackend.dto.load.CarrierBidWithLoadDto;
+import am.loadboardbackend.mailing.BidPlacedEmailContext;
+import am.loadboardbackend.mailing.BidRejectedEmailContext;
+import org.springframework.security.core.context.SecurityContextHolder;
 import am.loadboardbackend.model.*;
 import am.loadboardbackend.repository.LoadPostingRepository;
 import am.loadboardbackend.repository.CarrierRepository;
+import am.loadboardbackend.repository.UserRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -20,18 +26,33 @@ import am.loadboardbackend.dto.load.BidResponse;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@Slf4j
 public class LoadPostingService {
 
     private final LoadPostingRepository loadRepo;
     private final CarrierRepository carrierRepo;
     private final AuthService authService;
     private final BidRepository bidRepo;
+    private final UserRepository userRepository;
+    private final EmailService emailService;
+    private final AppProperties appProperties;
 
-    public LoadPostingService(LoadPostingRepository loadRepo, CarrierRepository carrierRepo, AuthService authService, BidRepository bidRepo) {
+    public LoadPostingService(
+            LoadPostingRepository loadRepo,
+            CarrierRepository carrierRepo,
+            AuthService authService,
+            BidRepository bidRepo,
+            UserRepository userRepository,
+            EmailService emailService,
+            AppProperties appProperties
+    ) {
         this.loadRepo = loadRepo;
         this.carrierRepo = carrierRepo;
         this.authService = authService;
         this.bidRepo = bidRepo;
+        this.userRepository = userRepository;
+        this.emailService = emailService;
+        this.appProperties = appProperties;
     }
 
     public LoadPostingDto createLoad(CreateLoadRequest req) {
@@ -42,9 +63,7 @@ public class LoadPostingService {
         Broker broker = current.getBroker();
 
         LoadPosting load = new LoadPosting();
-        // set owner broker
         load.setBroker(broker);
-
         load.setPickupType(req.getPickupType());
         load.setDropType(req.getDropType());
 
@@ -83,8 +102,8 @@ public class LoadPostingService {
 
     public LoadPostingDto updateLoad(UUID id, CreateLoadRequest req) {
         User current = authService.currentUserOrThrow();
-        LoadPosting load = loadRepo.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Load not found"));
-        // ownership: only broker who posted (we don't store broker on model) -> skip strict ownership for now
+        LoadPosting load = loadRepo.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Load not found"));
         if (current.getBroker() == null) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only brokers can edit loads");
         }
@@ -92,7 +111,8 @@ public class LoadPostingService {
         load.setPickupType(req.getPickupType());
         load.setDropType(req.getDropType());
 
-        am.loadboardbackend.model.LoadAddress pickup2 = load.getPickupAddress() == null ? new am.loadboardbackend.model.LoadAddress() : load.getPickupAddress();
+        am.loadboardbackend.model.LoadAddress pickup2 = load.getPickupAddress() == null
+                ? new am.loadboardbackend.model.LoadAddress() : load.getPickupAddress();
         pickup2.setStreet(req.getPickupStreet());
         pickup2.setCity(req.getPickupCity());
         pickup2.setState(req.getPickupState());
@@ -101,7 +121,8 @@ public class LoadPostingService {
         pickup2.setLotNumber(req.getPickupLotNumber());
         load.setPickupAddress(pickup2);
 
-        am.loadboardbackend.model.LoadAddress drop2 = load.getDropAddress() == null ? new am.loadboardbackend.model.LoadAddress() : load.getDropAddress();
+        am.loadboardbackend.model.LoadAddress drop2 = load.getDropAddress() == null
+                ? new am.loadboardbackend.model.LoadAddress() : load.getDropAddress();
         drop2.setStreet(req.getDropStreet());
         drop2.setCity(req.getDropCity());
         drop2.setState(req.getDropState());
@@ -110,7 +131,8 @@ public class LoadPostingService {
         drop2.setLotNumber(req.getDropLotNumber());
         load.setDropAddress(drop2);
 
-        am.loadboardbackend.model.VehicleInfo v2 = load.getVehicle() == null ? new am.loadboardbackend.model.VehicleInfo() : load.getVehicle();
+        am.loadboardbackend.model.VehicleInfo v2 = load.getVehicle() == null
+                ? new am.loadboardbackend.model.VehicleInfo() : load.getVehicle();
         v2.setMake(req.getVehicleMake());
         v2.setModel(req.getVehicleModel());
         v2.setYear(req.getVehicleYear());
@@ -136,13 +158,13 @@ public class LoadPostingService {
         if (!load.getBroker().getId().equals(current.getBroker().getId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only delete your own loads");
         }
-        // Remove all bids first to avoid FK constraint violations
         bidRepo.deleteAllByLoadId(id);
         loadRepo.delete(load);
     }
 
     public List<LoadPostingDto> listAllForCarrier(UUID carrierId) {
-        Carrier carrier = carrierRepo.findById(carrierId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Carrier not found"));
+        Carrier carrier = carrierRepo.findById(carrierId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Carrier not found"));
         if (carrier.getSubscriptionActive() == null || !carrier.getSubscriptionActive()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Carrier subscription not active");
         }
@@ -150,16 +172,34 @@ public class LoadPostingService {
     }
 
     public List<LoadPostingDto> publicListAllForCarrier(UUID carrierId) {
-        // utility to check without exception
-        Carrier carrier = carrierRepo.findById(carrierId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Carrier not found"));
+        Carrier carrier = carrierRepo.findById(carrierId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Carrier not found"));
         if (carrier.getSubscriptionActive() == null || !carrier.getSubscriptionActive()) {
             return List.of();
         }
-        return loadRepo.findAll().stream().filter(p -> p.getStatus() == null || p.getStatus().name().equals("OPEN")).map(this::toDto).collect(Collectors.toList());
+        return loadRepo.findAll().stream()
+                .filter(p -> p.getStatus() == null || p.getStatus().name().equals("OPEN"))
+                .map(this::toDto).collect(Collectors.toList());
     }
 
     public List<LoadPostingDto> listAllPublic() {
+        // Authenticated carriers must have an active subscription to browse loads.
+        User caller = currentUserOptional();
+        if (caller != null && caller.getCarrier() != null) {
+            Carrier carrier = caller.getCarrier();
+            if (carrier.getSubscriptionActive() == null || !carrier.getSubscriptionActive()) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Carrier subscription not active");
+            }
+        }
         return loadRepo.findAll().stream().map(this::toDto).collect(Collectors.toList());
+    }
+
+    private User currentUserOptional() {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated() || !(auth.getPrincipal() instanceof User u)) {
+            return null;
+        }
+        return u;
     }
 
     public List<LoadPostingDto> listMyBrokerLoads() {
@@ -171,14 +211,10 @@ public class LoadPostingService {
                 .stream().map(this::toDto).collect(Collectors.toList());
     }
 
-    /**
-     * Returns all bids placed by the currently authenticated carrier,
-     * with embedded load info so the frontend needs only one request.
-     */
     public List<CarrierBidWithLoadDto> getMyCarrierBids() {
         User current = authService.currentUserOrThrow();
         if (current.getCarrier() == null) {
-            throw new ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN, "Only carriers can access their bids");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only carriers can access their bids");
         }
         return bidRepo.findAllByCarrierId(current.getCarrier().getId()).stream()
                 .map(bid -> {
@@ -247,17 +283,19 @@ public class LoadPostingService {
         return dto;
     }
 
-    // Bidding / booking operations
+    // ── Bidding / booking ─────────────────────────────────────────────────────
+
     public BidResponse placeBid(CreateBidRequest req) {
         User current = authService.currentUserOrThrow();
         if (current.getCarrier() == null) {
-            throw new ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN, "Only carriers can bid");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only carriers can bid");
         }
         Carrier carrier = current.getCarrier();
 
-        LoadPosting load = loadRepo.findById(req.loadId()).orElseThrow(() -> new ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Load not found"));
+        LoadPosting load = loadRepo.findById(req.loadId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Load not found"));
         if (load.getStatus() != null && load.getStatus().name().equals("ASSIGNED")) {
-            throw new ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT, "Load already assigned");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Load already assigned");
         }
 
         Bid bid = new Bid();
@@ -269,46 +307,52 @@ public class LoadPostingService {
 
         Bid saved = bidRepo.save(bid);
 
-        // Do not auto-assign on bookNow — broker must approve. Keep bid record for broker review.
+        notifyBrokerOfBid(saved, load);
+
         return toBidResponse(saved);
     }
 
     public List<BidResponse> listBids(UUID loadId) {
-        // only broker who owns loads or admin can list — for simplicity, allow any authenticated broker
         User current = authService.currentUserOrThrow();
-        if (current.getBroker() == null) throw new ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN, "Only brokers can view bids");
-    return bidRepo.findAllByLoadId(loadId).stream().map(this::toBidResponse).collect(Collectors.toList());
+        if (current.getBroker() == null) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only brokers can view bids");
+        }
+        return bidRepo.findAllByLoadId(loadId).stream().map(this::toBidResponse).collect(Collectors.toList());
     }
 
     public void approveBid(UUID bidId) {
         User current = authService.currentUserOrThrow();
-        if (current.getBroker() == null) throw new ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN, "Only brokers can approve bids");
-        Bid bid = bidRepo.findById(bidId).orElseThrow(() -> new ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Bid not found"));
+        if (current.getBroker() == null) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only brokers can approve bids");
+        }
+        Bid bid = bidRepo.findById(bidId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Bid not found"));
         LoadPosting load = bid.getLoad();
-        // assign
+
         load.setAssignedCarrier(bid.getCarrier());
         load.setStatus(LoadPosting.LoadStatus.ASSIGNED);
         loadRepo.save(load);
 
-        // mark this bid approved
         bid.setStatus(BidStatus.APPROVED);
         bidRepo.save(bid);
 
-        // mark other bids for the same load as REJECTED
         bidRepo.findAllByLoadId(load.getId()).stream()
                 .filter(b -> !b.getId().equals(bid.getId()))
                 .forEach(other -> {
                     other.setStatus(BidStatus.REJECTED);
                     bidRepo.save(other);
+                    notifyCarrierOfRejection(other, load);
                 });
     }
 
     public void cancelBooking(UUID loadId) {
         User current = authService.currentUserOrThrow();
-        if (current.getBroker() == null) throw new ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN, "Only brokers can cancel bookings");
-        LoadPosting load = loadRepo.findById(loadId).orElseThrow(() -> new ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Load not found"));
-        // unassign and mark open
-        // mark any approved bids as cancelled and reopen the load
+        if (current.getBroker() == null) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only brokers can cancel bookings");
+        }
+        LoadPosting load = loadRepo.findById(loadId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Load not found"));
+
         bidRepo.findAllByLoadId(load.getId()).stream()
                 .filter(b -> b.getStatus() == BidStatus.APPROVED)
                 .forEach(approved -> {
@@ -322,6 +366,50 @@ public class LoadPostingService {
     }
 
     private BidResponse toBidResponse(Bid b) {
-        return new BidResponse(b.getId(), b.getLoad().getId(), b.getCarrier().getId(), b.getAmount(), b.isBookNow(), b.getStatus().name(), b.getCreatedAt(), b.getUpdatedAt());
+        return new BidResponse(
+                b.getId(), b.getLoad().getId(), b.getCarrier().getId(),
+                b.getAmount(), b.isBookNow(), b.getStatus().name(),
+                b.getCreatedAt(), b.getUpdatedAt()
+        );
+    }
+
+    private void notifyCarrierOfRejection(Bid bid, LoadPosting load) {
+        if (bid.getCarrier() == null) return;
+        try {
+            String carrierEmail = userRepository.findByCarrierId(bid.getCarrier().getId())
+                    .map(User::getEmail)
+                    .orElse(null);
+            if (carrierEmail == null) return;
+
+            String carrierName = bid.getCarrier().getCompanyName() != null
+                    ? bid.getCarrier().getCompanyName()
+                    : bid.getCarrier().getLegalName();
+
+            BidRejectedEmailContext ctx = new BidRejectedEmailContext();
+            ctx.init(carrierEmail, carrierName, bid, load, appProperties.getMail().getFrom());
+            emailService.sendEmail(ctx);
+        } catch (Exception e) {
+            log.error("Failed to send bid rejection email for bidId={}: {}", bid.getId(), e.getMessage(), e);
+        }
+    }
+
+    private void notifyBrokerOfBid(Bid bid, LoadPosting load) {
+        if (load.getBroker() == null) return;
+        try {
+            String brokerEmail = userRepository.findByBrokerId(load.getBroker().getId())
+                    .map(User::getEmail)
+                    .orElse(null);
+            if (brokerEmail == null) return;
+
+            String brokerName = load.getBroker().getCompanyName() != null
+                    ? load.getBroker().getCompanyName()
+                    : load.getBroker().getLegalName();
+
+            BidPlacedEmailContext ctx = new BidPlacedEmailContext();
+            ctx.init(brokerEmail, brokerName, bid, load, appProperties.getMail().getFrom());
+            emailService.sendEmail(ctx);
+        } catch (Exception e) {
+            log.error("Failed to send bid notification for loadId={}: {}", load.getId(), e.getMessage(), e);
+        }
     }
 }

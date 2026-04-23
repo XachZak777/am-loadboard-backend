@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Bid Update</title>
+    <style>
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; background: #f4f4f5; margin: 0; padding: 0; }
+        .wrapper { max-width: 600px; margin: 40px auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+        .header { background: #6b7280; padding: 32px 40px; text-align: center; }
+        .header h1 { color: #fff; margin: 0; font-size: 22px; letter-spacing: .5px; }
+        .body { padding: 36px 40px; color: #374151; }
+        .body p { line-height: 1.65; margin: 0 0 16px; }
+        .detail-box { background: #f9fafb; border-left: 4px solid #6b7280; padding: 16px 20px; border-radius: 4px; margin: 20px 0; }
+        .detail-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #e5e7eb; font-size: 14px; }
+        .detail-row:last-child { border-bottom: none; }
+        .detail-label { color: #6b7280; font-weight: 500; }
+        .detail-value { color: #111827; font-weight: 600; }
+        .btn { display: inline-block; margin: 24px 0; padding: 14px 32px; background: #f59e0b; color: #fff !important; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 15px; }
+        .footer { padding: 20px 40px; background: #f9fafb; text-align: center; font-size: 12px; color: #9ca3af; }
+    </style>
+</head>
+<body>
+<div class="wrapper">
+    <div class="header">
+        <h1>Bid Not Selected</h1>
+    </div>
+    <div class="body">
+        <p>Hi <strong th:text="${carrierName}">Carrier</strong>,</p>
+        <p>Thank you for submitting a bid. Unfortunately, the broker has selected another carrier for this load.</p>
+
+        <div class="detail-box">
+            <div class="detail-row">
+                <span class="detail-label">Vehicle</span>
+                <span class="detail-value" th:text="${vehicleSummary}">Vehicle</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Route</span>
+                <span class="detail-value">
+                    <span th:text="${pickupCity}">City</span>,&nbsp;<span th:text="${pickupState}">ST</span>
+                    &nbsp;→&nbsp;
+                    <span th:text="${dropCity}">City</span>,&nbsp;<span th:text="${dropState}">ST</span>
+                </span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Your Bid</span>
+                <span class="detail-value" th:text="${bidAmount}">$0</span>
+            </div>
+        </div>
+
+        <p>There are plenty more loads available on the board — keep bidding!</p>
+
+        <a href="#" class="btn">Browse Loads</a>
+
+        <p style="font-size:13px; color:#6b7280;">
+            We appreciate your participation and look forward to working with you on future loads.
+        </p>
+    </div>
+    <div class="footer">
+        &copy; 2026 LoadBoard. All rights reserved.
+    </div>
+</div>
+</body>
+</html>

@@ -1,5 +1,6 @@
 package am.loadboardbackend.dto.admin;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -22,7 +23,7 @@ public record AdminUserDto(
         LocalDateTime createdAt,
 
         // ── Profile (carrier or broker) ──────────────────────────────────
-        UUID    profileId,       // carrier.id or broker.id
+        UUID    profileId,
         String  companyName,
         String  dotNumber,
         String  mcNumber,
@@ -32,8 +33,8 @@ public record AdminUserDto(
         String  state,
         String  zipCode,
         String  insuranceCompany,
-        String  cargoInsurance,
-        String  liabilityInsurance,
+        BigDecimal cargoInsurance,
+        BigDecimal liabilityInsurance,
         String  taxIdType,
         String  taxId,
 

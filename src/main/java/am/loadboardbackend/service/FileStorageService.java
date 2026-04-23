@@ -36,6 +36,11 @@ public class FileStorageService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only PDF files are supported");
         }
 
+        String declaredContentType = file.getContentType();
+        if (!"application/pdf".equalsIgnoreCase(declaredContentType)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only PDF files are supported");
+        }
+
         // Read file content
         byte[] fileContent = documentFileService.readFileContent(file);
 

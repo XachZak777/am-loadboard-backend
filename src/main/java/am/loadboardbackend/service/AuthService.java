@@ -14,10 +14,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDateTime;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class AuthService {
+
+    private static final int MAX_FAILED_ATTEMPTS = 5;
+    private static final int LOCKOUT_MINUTES = 15;
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -26,37 +31,43 @@ public class AuthService {
     private final BrokerProfileService brokerProfileService;
 
     public LoginResponse login(String email, String password) {
-        log.info("Login attempt email={}", email);
+        log.info("Login attempt for userId lookup");
 
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> {
-                    log.warn("Login failed: user not found email={}", email);
-                    return new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
-                });
-
-        if (!passwordEncoder.matches(password, user.getPasswordHash())) {
-            log.warn("Login failed: invalid password email={}", email);
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
-        }
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials"));
 
         if (user.isLoginDisabled()) {
-            log.warn("Login blocked: account disabled email={}", email);
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Your account has been disabled. Please contact support.");
         }
 
+        // Check if account is temporarily locked
+        if (user.getLockedUntil() != null && LocalDateTime.now().isBefore(user.getLockedUntil())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Account temporarily locked due to too many failed attempts. Please try again later.");
+        }
+
+        if (!passwordEncoder.matches(password, user.getPasswordHash())) {
+            recordFailedAttempt(user);
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
+        }
+
         if (!user.isEmailVerified()) {
-            log.warn("Login blocked: email not verified email={}", email);
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Please verify your email address before logging in");
         }
 
-        // Admin users bypass the admin-approval check (they are their own approvers)
         if (user.getRole() != UserRole.ROLE_ADMIN && !user.isAdminApproved()) {
-            log.warn("Login blocked: admin approval pending email={}", email);
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Your account is pending admin approval. You will be notified once approved.");
         }
 
+        // Successful login: reset lockout state
+        if (user.getFailedLoginAttempts() > 0 || user.getLockedUntil() != null) {
+            user.setFailedLoginAttempts(0);
+            user.setLockedUntil(null);
+            userRepository.save(user);
+        }
+
         String token = jwtUtil.generateToken(user);
-        log.info("Login success email={} userId={}", email, user.getId());
+        log.info("Login success userId={}", user.getId());
         return new LoginResponse(
                 token,
                 user.getId().toString(),
@@ -66,12 +77,8 @@ public class AuthService {
         );
     }
 
-    /**
-     * Returns the current authenticated user's status for GET /api/auth/me.
-     */
     public MeResponse getMe(User user) {
         boolean profileComplete = computeProfileComplete(user);
-
         return new MeResponse(
                 user.getId().toString(),
                 user.getEmail(),
@@ -95,7 +102,15 @@ public class AuthService {
         throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "No authenticated user");
     }
 
-    // ── private helpers ──────────────────────────────────────────────────────
+    private void recordFailedAttempt(User user) {
+        int attempts = user.getFailedLoginAttempts() + 1;
+        user.setFailedLoginAttempts(attempts);
+        if (attempts >= MAX_FAILED_ATTEMPTS) {
+            user.setLockedUntil(LocalDateTime.now().plusMinutes(LOCKOUT_MINUTES));
+            log.warn("Account locked due to failed attempts userId={}", user.getId());
+        }
+        userRepository.save(user);
+    }
 
     private boolean computeProfileComplete(User user) {
         if (user.getRole() == UserRole.ROLE_CARRIER) {
@@ -104,8 +119,6 @@ public class AuthService {
         if (user.getRole() == UserRole.ROLE_BROKER) {
             return brokerProfileService.isProfileComplete(user);
         }
-        // Admins are always "complete"
         return true;
     }
 }
-

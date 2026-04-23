@@ -72,6 +72,11 @@ public class User extends Auditable<String> {
     @Column(nullable = false, columnDefinition = "boolean not null default false")
     private boolean loginDisabled = false;
 
+    @Column(nullable = false, columnDefinition = "int not null default 0")
+    private int failedLoginAttempts = 0;
+
+    private LocalDateTime lockedUntil;
+
     @ToString.Exclude
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private Set<SecurityToken> securityTokens = new HashSet<>();

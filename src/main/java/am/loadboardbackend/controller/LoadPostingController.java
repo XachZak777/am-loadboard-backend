@@ -4,6 +4,7 @@ import am.loadboardbackend.dto.load.CreateLoadRequest;
 import am.loadboardbackend.dto.load.LoadPostingDto;
 import am.loadboardbackend.dto.load.CarrierBidWithLoadDto;
 import am.loadboardbackend.service.LoadPostingService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,13 +20,13 @@ public class LoadPostingController {
     private final LoadPostingService loadService;
 
     @PostMapping
-    public ResponseEntity<LoadPostingDto> createLoad(@RequestBody CreateLoadRequest req) {
+    public ResponseEntity<LoadPostingDto> createLoad(@Valid @RequestBody CreateLoadRequest req) {
         LoadPostingDto dto = loadService.createLoad(req);
         return ResponseEntity.ok(dto);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<LoadPostingDto> updateLoad(@PathVariable UUID id, @RequestBody CreateLoadRequest req) {
+    public ResponseEntity<LoadPostingDto> updateLoad(@PathVariable UUID id, @Valid @RequestBody CreateLoadRequest req) {
         LoadPostingDto dto = loadService.updateLoad(id, req);
         return ResponseEntity.ok(dto);
     }

@@ -121,8 +121,8 @@ public class AdminUserService {
         String  state             = null;
         String  zipCode           = null;
         String  insuranceCompany  = null;
-        String  cargoInsurance    = null;
-        String  liabilityInsurance= null;
+        java.math.BigDecimal cargoInsurance    = null;
+        java.math.BigDecimal liabilityInsurance= null;
         String  taxIdType         = null;
         String  taxId             = null;
         String  ownerType         = null;
@@ -139,8 +139,8 @@ public class AdminUserService {
             state              = c.getState();
             zipCode            = c.getZipCode();
             insuranceCompany   = c.getInsuranceCompany();
-            cargoInsurance     = c.getCargoInsurance() != null ? c.getCargoInsurance().toPlainString() : null;
-            liabilityInsurance = c.getLiabilityInsurance() != null ? c.getLiabilityInsurance().toPlainString() : null;
+            cargoInsurance     = c.getCargoInsurance();
+            liabilityInsurance = c.getLiabilityInsurance();
             taxIdType          = c.getTaxIdType();
             taxId              = c.getTaxId();
             ownerType          = "CARRIER";
@@ -156,8 +156,8 @@ public class AdminUserService {
             state              = b.getState();
             zipCode            = b.getZipCode();
             insuranceCompany   = b.getInsuranceCompany();
-            cargoInsurance     = b.getCargoInsurance() != null ? b.getCargoInsurance().toPlainString() : null;
-            liabilityInsurance = b.getLiabilityInsurance() != null ? b.getLiabilityInsurance().toPlainString() : null;
+            cargoInsurance     = b.getCargoInsurance();
+            liabilityInsurance = b.getLiabilityInsurance();
             taxIdType          = b.getTaxIdType();
             taxId              = b.getTaxId();
             ownerType          = "BROKER";
