@@ -92,13 +92,12 @@ public class RatingService {
         LoadPosting load = loadRepository.findById(req.loadId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Load not found"));
 
-        // Rule 1: load must be in a completed state
-        if (load.getStatus() != LoadPosting.LoadStatus.COMPLETED
-                && load.getStatus() != LoadPosting.LoadStatus.ASSIGNED
-                && load.getStatus() != LoadPosting.LoadStatus.DELIVERED
-                && load.getStatus() != LoadPosting.LoadStatus.PAID) {
+        // Rule 1: load must be delivered or later
+        if (load.getStatus() != LoadPosting.LoadStatus.DELIVERED
+                && load.getStatus() != LoadPosting.LoadStatus.PAID
+                && load.getStatus() != LoadPosting.LoadStatus.COMPLETED) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Ratings can only be submitted after the load has been delivered or paid");
+                    "Ratings can only be submitted after the load has been delivered");
         }
 
         UUID submitterId = resolveOwnProfileId(submitter);

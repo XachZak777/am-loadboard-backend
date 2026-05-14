@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title th:text="'Load Update: ' + ${statusLabel}">Load Update</title>
+    <title>New Load on Your Preferred Lane</title>
     <style>
         body { font-family: 'Helvetica Neue', Arial, sans-serif; background: #f1f5f9; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
         .outer { padding: 40px 16px; }
@@ -15,10 +15,6 @@
         .hero p  { margin: 0; color: #94a3b8; font-size: 13px; }
         .body  { padding: 28px 36px; color: #374151; }
         .body p { line-height: 1.7; margin: 0 0 14px; font-size: 14px; }
-        .status-pill { display: inline-block; padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; letter-spacing: .4px; margin-bottom: 18px; }
-        .pill-picked_up { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
-        .pill-delivered  { background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; }
-        .pill-paid       { background: #ede9fe; color: #4c1d95; border: 1px solid #c4b5fd; }
         .label { font-size: 11px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: #64748b; margin-bottom: 8px; }
         .detail-table { width: 100%; border-collapse: collapse; margin: 4px 0 20px; }
         .detail-table td { padding: 10px 0; font-size: 14px; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
@@ -38,19 +34,12 @@
         <span class="brand">Haulius LoadBoard</span>
     </div>
     <div class="hero">
-        <h1>Load Status Update</h1>
-        <p th:text="${vehicleSummary + ' — ' + pickupCity + ', ' + pickupState + ' to ' + dropCity + ', ' + dropState}">Vehicle — Route</p>
+        <h1>New Load on Your Preferred Lane</h1>
+        <p th:text="${pickupState + ' to ' + dropState}">ST to ST</p>
     </div>
     <div class="body">
-        <p>Hi <strong th:text="${brokerName}">Broker</strong>,</p>
-
-        <div>
-            <span class="status-pill"
-                  th:classappend="${newStatus == 'PICKED_UP'} ? 'pill-picked_up' : (${newStatus == 'DELIVERED'} ? 'pill-delivered' : 'pill-paid')"
-                  th:text="${statusLabel}">Status</span>
-        </div>
-
-        <p th:text="${statusDescription}">Status description.</p>
+        <p>Hi <strong th:text="${carrierName}">Carrier</strong>,</p>
+        <p>A new load has been posted on one of your preferred lanes. Log in to view the full details and place a bid.</p>
 
         <div class="label">Load Details</div>
         <table class="detail-table">
@@ -67,17 +56,22 @@
                 </td>
             </tr>
             <tr>
-                <td>Carrier</td>
-                <td th:text="${carrierName}">Carrier</td>
+                <td>Price</td>
+                <td th:text="${price}">$0</td>
+            </tr>
+            <tr>
+                <td>Pickup Date</td>
+                <td th:text="${pickupDate}">—</td>
             </tr>
         </table>
 
         <div class="cta-wrap">
-            <a th:href="${dashboardUrl}" class="btn">View Dashboard</a>
+            <a th:href="${loadBoardUrl}" class="btn">View Available Loads</a>
         </div>
 
         <p class="note">
-            Log into your dashboard to view the full load history and timeline.
+            You received this alert because this load matches one of your preferred lanes.
+            Update your preferred lanes in your company profile to manage these notifications.
         </p>
     </div>
     <div class="footer">

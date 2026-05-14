@@ -13,6 +13,7 @@ import tools.jackson.databind.ObjectMapper;
 import am.loadboardbackend.mailing.BidPlacedEmailContext;
 import am.loadboardbackend.mailing.BidRejectedEmailContext;
 import am.loadboardbackend.mailing.LoadStatusUpdateEmailContext;
+import am.loadboardbackend.mailing.NewLoadAlertEmailContext;
 import am.loadboardbackend.model.*;
 import am.loadboardbackend.model.Carrier;
 import am.loadboardbackend.repository.LoadPostingRepository;
@@ -25,6 +26,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -134,6 +136,7 @@ public class LoadPostingService {
         load.setAdditionalVehicles(serializeAdditionalVehicles(req.getAdditionalVehicles()));
 
         LoadPosting saved = loadRepo.save(load);
+        notifyMatchingCarriers(saved);
         return toDto(saved);
     }
 
@@ -247,7 +250,9 @@ public class LoadPostingService {
     }
 
     public List<LoadPostingDto> listAllPublic() {
-        return loadRepo.findAll().stream().map(this::toDto).collect(Collectors.toList());
+        return loadRepo.findAll().stream()
+                .filter(p -> p.getStatus() == null || p.getStatus() == LoadPosting.LoadStatus.OPEN)
+                .map(this::toDto).collect(Collectors.toList());
     }
 
     public List<LoadPostingDto> listMyBrokerLoads() {
@@ -645,7 +650,7 @@ public class LoadPostingService {
             }
             if (ownerEmail == null) return;
             LoadStatusUpdateEmailContext ctx = new LoadStatusUpdateEmailContext();
-            ctx.init(ownerEmail, ownerName, load, carrier, newStatus, appProperties.getMail().getFrom());
+            ctx.init(ownerEmail, ownerName, load, carrier, newStatus, appProperties.getMail().getFrom(), appProperties.getFrontend().getBaseUrl());
             emailService.sendEmail(ctx);
         } catch (Exception e) {
             log.error("Failed to send status update email for loadId={}: {}", load.getId(), e.getMessage(), e);
@@ -665,7 +670,7 @@ public class LoadPostingService {
                     : bid.getCarrier().getLegalName();
 
             BidRejectedEmailContext ctx = new BidRejectedEmailContext();
-            ctx.init(carrierEmail, carrierName, bid, load, appProperties.getMail().getFrom());
+            ctx.init(carrierEmail, carrierName, bid, load, appProperties.getMail().getFrom(), appProperties.getFrontend().getBaseUrl());
             emailService.sendEmail(ctx);
         } catch (Exception e) {
             log.error("Failed to send bid rejection email for bidId={}: {}", bid.getId(), e.getMessage(), e);
@@ -689,10 +694,74 @@ public class LoadPostingService {
             if (ownerEmail == null) return;
 
             BidPlacedEmailContext ctx = new BidPlacedEmailContext();
-            ctx.init(ownerEmail, ownerName, bid, load, appProperties.getMail().getFrom());
+            ctx.init(ownerEmail, ownerName, bid, load, appProperties.getMail().getFrom(), appProperties.getFrontend().getBaseUrl());
             emailService.sendEmail(ctx);
         } catch (Exception e) {
             log.error("Failed to send bid notification for loadId={}: {}", load.getId(), e.getMessage(), e);
+        }
+    }
+
+    // ── Preferred-line matching ──────────────────────────────────────────────
+
+    public List<LoadPostingDto> getPreferredLineLoads() {
+        User current = authService.currentUserOrThrow();
+        Carrier carrier = current.getCarrier();
+        if (carrier == null) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only carriers can access preferred-line loads");
+        }
+        String json = carrier.getPreferredLines();
+        if (json == null || json.isBlank()) return List.of();
+
+        List<Map<String, String>> lines = parsePreferredLines(json);
+        if (lines.isEmpty()) return List.of();
+
+        return loadRepo.findAll().stream()
+                .filter(l -> l.getStatus() == null || l.getStatus() == LoadPosting.LoadStatus.OPEN)
+                .filter(l -> matchesAnyLine(lines, l))
+                .map(this::toDto)
+                .collect(Collectors.toList());
+    }
+
+    private void notifyMatchingCarriers(LoadPosting load) {
+        String pickupState = load.getPickupAddress() != null ? load.getPickupAddress().getState() : null;
+        String dropState   = load.getDropAddress()   != null ? load.getDropAddress().getState()   : null;
+        if (pickupState == null || dropState == null) return;
+
+        carrierRepo.findAll().stream()
+                .filter(c -> c.getPreferredLines() != null && !c.getPreferredLines().isBlank())
+                .filter(c -> matchesAnyLine(parsePreferredLines(c.getPreferredLines()), load))
+                .forEach(carrier -> {
+                    try {
+                        String carrierEmail = userRepository.findByCarrierId(carrier.getId())
+                                .map(User::getEmail).orElse(null);
+                        if (carrierEmail == null) return;
+                        String carrierName = carrier.getCompanyName() != null
+                                ? carrier.getCompanyName() : carrier.getLegalName();
+                        NewLoadAlertEmailContext ctx = new NewLoadAlertEmailContext();
+                        ctx.init(carrierEmail, carrierName, load, appProperties.getMail().getFrom(), appProperties.getFrontend().getBaseUrl());
+                        emailService.sendEmail(ctx);
+                    } catch (Exception e) {
+                        log.error("Failed to send preferred-line alert to carrierId={}: {}",
+                                carrier.getId(), e.getMessage(), e);
+                    }
+                });
+    }
+
+    private boolean matchesAnyLine(List<Map<String, String>> lines, LoadPosting load) {
+        String pickup = load.getPickupAddress() != null ? load.getPickupAddress().getState() : null;
+        String drop   = load.getDropAddress()   != null ? load.getDropAddress().getState()   : null;
+        if (pickup == null || drop == null) return false;
+        return lines.stream().anyMatch(line ->
+                pickup.equalsIgnoreCase(line.get("fromState")) &&
+                drop.equalsIgnoreCase(line.get("toState")));
+    }
+
+    private List<Map<String, String>> parsePreferredLines(String json) {
+        try {
+            return objectMapper.readValue(json, new TypeReference<List<Map<String, String>>>() {});
+        } catch (Exception e) {
+            log.warn("Failed to parse preferredLines JSON: {}", e.getMessage());
+            return List.of();
         }
     }
 }

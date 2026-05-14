@@ -113,4 +113,9 @@ public class LoadPostingController {
     public ResponseEntity<List<CarrierBidWithLoadDto>> myBids() {
         return ResponseEntity.ok(loadService.getMyCarrierBids());
     }
+
+    @GetMapping("/carrier/preferred-loads")
+    public ResponseEntity<List<LoadPostingDto>> preferredLineLoads() {
+        return ResponseEntity.ok(loadService.getPreferredLineLoads());
+    }
 }
