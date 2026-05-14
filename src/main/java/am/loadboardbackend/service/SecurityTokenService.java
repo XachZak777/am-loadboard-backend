@@ -12,6 +12,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -20,11 +21,11 @@ import java.util.UUID;
 @Slf4j
 public class SecurityTokenService {
 
-    /** Email-verification tokens expire after 24 hours. */
     private static final long EMAIL_VERIFICATION_EXPIRY_HOURS = 24;
-
-    /** Password-reset tokens expire after 1 hour. */
     private static final long PASSWORD_RESET_EXPIRY_HOURS = 1;
+    private static final long LOGIN_CODE_EXPIRY_MINUTES = 10;
+
+    private final SecureRandom secureRandom = new SecureRandom();
 
     private final SecurityTokenRepository securityTokenRepository;
 
@@ -62,6 +63,36 @@ public class SecurityTokenService {
         SecurityToken saved = securityTokenRepository.save(securityToken);
         log.info("Created PASSWORD_RESET token for userId={}", user.getId());
         return saved;
+    }
+
+    @Transactional
+    public SecurityToken createLoginCodeToken(User user) {
+        securityTokenRepository.deleteAllByUserAndTokenType(user, TokenType.LOGIN_CODE);
+        String code = String.format("%06d", secureRandom.nextInt(1_000_000));
+        SecurityToken securityToken = SecurityToken.builder()
+                .token(code)
+                .tokenType(TokenType.LOGIN_CODE)
+                .user(user)
+                .expiresAt(LocalDateTime.now().plusMinutes(LOGIN_CODE_EXPIRY_MINUTES))
+                .build();
+        SecurityToken saved = securityTokenRepository.save(securityToken);
+        log.info("Created LOGIN_CODE for userId={}", user.getId());
+        return saved;
+    }
+
+    @Transactional
+    public void consumeLoginCode(String code, User user) {
+        SecurityToken token = securityTokenRepository
+                .findByTokenAndTokenTypeAndUser(code, TokenType.LOGIN_CODE, user)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid or expired code"));
+        if (!token.isValid()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    token.isExpired() ? "Code has expired" : "Code has already been used");
+        }
+        token.setUsed(true);
+        token.setUsedAt(LocalDateTime.now());
+        securityTokenRepository.save(token);
+        log.info("Consumed LOGIN_CODE for userId={}", user.getId());
     }
 
     // ── Token validation ──────────────────────────────────────────────────────

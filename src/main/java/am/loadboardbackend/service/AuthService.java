@@ -30,9 +30,7 @@ public class AuthService {
     private final CarrierProfileService carrierProfileService;
     private final BrokerProfileService brokerProfileService;
 
-    public LoginResponse login(String email, String password) {
-        log.info("Login attempt for userId lookup");
-
+    public User validateLoginCredentials(String email, String password) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials"));
 
@@ -40,7 +38,6 @@ public class AuthService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Your account has been disabled. Please contact support.");
         }
 
-        // Check if account is temporarily locked
         if (user.getLockedUntil() != null && LocalDateTime.now().isBefore(user.getLockedUntil())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,
                     "Account temporarily locked due to too many failed attempts. Please try again later.");
@@ -51,7 +48,7 @@ public class AuthService {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
         }
 
-        if (!user.isEmailVerified()) {
+        if (user.getRole() != UserRole.ROLE_ADMIN && !user.isEmailVerified()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Please verify your email address before logging in");
         }
 
@@ -59,15 +56,19 @@ public class AuthService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Your account is pending admin approval. You will be notified once approved.");
         }
 
-        // Successful login: reset lockout state
         if (user.getFailedLoginAttempts() > 0 || user.getLockedUntil() != null) {
             user.setFailedLoginAttempts(0);
             user.setLockedUntil(null);
             userRepository.save(user);
         }
 
+        log.info("Credentials validated for userId={}", user.getId());
+        return user;
+    }
+
+    public LoginResponse issueTokenForUser(User user) {
         String token = jwtUtil.generateToken(user);
-        log.info("Login success userId={}", user.getId());
+        log.info("Issued new token for userId={}", user.getId());
         return new LoginResponse(
                 token,
                 user.getId().toString(),
@@ -75,6 +76,11 @@ public class AuthService {
                 user.getRole() != null ? user.getRole().name().replace("ROLE_", "") : null,
                 user.isAdminApproved()
         );
+    }
+
+    public User findByEmailOrThrow(String email) {
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
     }
 
     public MeResponse getMe(User user) {
@@ -100,6 +106,16 @@ public class AuthService {
             return user;
         }
         throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "No authenticated user");
+    }
+
+    public java.util.Optional<User> currentUserOptional() {
+        try {
+            var auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.getPrincipal() instanceof User user) {
+                return java.util.Optional.of(user);
+            }
+        } catch (Exception ignored) {}
+        return java.util.Optional.empty();
     }
 
     private void recordFailedAttempt(User user) {

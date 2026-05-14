@@ -49,6 +49,11 @@ public class DocumentStorageService {
         return storeDocument(file, ownerId, ownerType, "MC_AUTHORITY", "mc-authority");
     }
 
+    @Transactional
+    public DocumentUploadResponse storeDealerDocument(MultipartFile file, UUID ownerId, String ownerType, String documentType) {
+        return storeDocument(file, ownerId, ownerType, documentType, documentType.toLowerCase().replace('_', '-'));
+    }
+
     /**
      * Generic document storage — validates, stores file in PostgreSQL BYTEA and persists metadata.
      *

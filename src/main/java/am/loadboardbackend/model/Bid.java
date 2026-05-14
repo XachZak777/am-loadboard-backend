@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -27,6 +28,11 @@ public class Bid {
     private BigDecimal amount;
 
     private boolean bookNow;
+
+    private LocalDate requestedPickupDate;
+    private String requestedPickupTime;
+    private LocalDate requestedDropDate;
+    private String requestedDropTime;
 
     @Enumerated(EnumType.STRING)
     private BidStatus status = BidStatus.PENDING;

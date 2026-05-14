@@ -340,6 +340,48 @@ public class RegistrationService {
     );
     }
 
+    /**
+     * Minimal broker registration — creates a User with ROLE_BROKER but no Broker entity yet.
+     * The broker profile (MC, DOT, company info) is completed later via the profile wizard.
+     */
+    @Transactional
+    public LoginResponse registerBrokerMinimal(String email, String password) {
+        log.info("RegisterBrokerMinimal start email={}", email);
+        assertEmailNotTaken(email);
+
+        User user = new User();
+        user.setEmail(email);
+        user.setPasswordHash(passwordEncoder.encode(password));
+        user.setRole(UserRole.ROLE_BROKER);
+        user.setEmailVerified(false);
+        user.setAdminApproved(false);
+        userRepository.save(user);
+
+        log.info("RegisterBrokerMinimal success email={} userId={}", email, user.getId());
+        return authService.issueTokenForUser(user);
+    }
+
+    /**
+     * Minimal carrier registration — creates a User with ROLE_CARRIER but no Carrier entity yet.
+     * The carrier profile (DOT, MC, company info) is completed later via the profile wizard.
+     */
+    @Transactional
+    public LoginResponse registerCarrierMinimal(String email, String password) {
+        log.info("RegisterCarrierMinimal start email={}", email);
+        assertEmailNotTaken(email);
+
+        User user = new User();
+        user.setEmail(email);
+        user.setPasswordHash(passwordEncoder.encode(password));
+        user.setRole(UserRole.ROLE_CARRIER);
+        user.setEmailVerified(false);
+        user.setAdminApproved(false);
+        userRepository.save(user);
+
+        log.info("RegisterCarrierMinimal success email={} userId={}", email, user.getId());
+        return authService.issueTokenForUser(user);
+    }
+
     @Transactional
     public LoginResponse registerAdmin(RegisterAdminRequest request) {
         // Check if any admin exists; if yes, require authentication

@@ -1,12 +1,10 @@
 package am.loadboardbackend.security;
 
 import am.loadboardbackend.model.User;
-import tools.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NonNull;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
@@ -15,13 +13,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.Map;
 
 @Component
-@RequiredArgsConstructor
 public class AdminApprovalFilter extends OncePerRequestFilter {
-
-    private final ObjectMapper objectMapper;
 
     @Override
     protected void doFilterInternal(
@@ -38,8 +32,10 @@ public class AdminApprovalFilter extends OncePerRequestFilter {
         }
 
         if (path.equals("/api/carriers/profile") || path.equals("/api/brokers/profile")
+                || path.equals("/api/dealers/profile")
                 || path.startsWith("/api/carriers/documents/")
                 || path.startsWith("/api/brokers/documents/")
+                || path.startsWith("/api/dealers/documents/")
                 || path.startsWith("/api/files/")) {
             filterChain.doFilter(request, response);
             return;
@@ -70,6 +66,6 @@ public class AdminApprovalFilter extends OncePerRequestFilter {
     private void writeError(HttpServletResponse response, int status, String message) throws IOException {
         response.setStatus(status);
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-        objectMapper.writeValue(response.getWriter(), Map.of("message", message, "status", status));
+        response.getWriter().write("{\"message\":\"" + message + "\",\"status\":" + status + "}");
     }
 }

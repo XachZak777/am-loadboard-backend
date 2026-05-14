@@ -3,7 +3,6 @@ package am.loadboardbackend.api;
 import am.loadboardbackend.dto.auth.LoginRequest;
 import am.loadboardbackend.dto.auth.LoginResponse;
 import am.loadboardbackend.dto.auth.MeResponse;
-import am.loadboardbackend.dto.auth.RegisterAdminRequest;
 import am.loadboardbackend.dto.auth.RegisterRequest;
 import am.loadboardbackend.dto.document.DocumentUploadResponse;
 import am.loadboardbackend.dto.load.BidResponse;
@@ -59,18 +58,24 @@ class AuthAndLoadWorkflowTest {
                 .build();
     }
 
-    @Test
-    void brokerCreatesLoad_carrierBids_brokerApproves_brokerCancels() throws Exception {
-        // Create initial admin (first admin doesn't require auth)
-        RegisterAdminRequest adminReq = new RegisterAdminRequest();
-        adminReq.setEmail("admin@example.com");
-        adminReq.setPassword("password123");
-        LoginResponse adminReg = read(mvc.perform(post("/api/auth/register-admin")
+    /**
+     * Login as the seeded admin (created by DataInitializer).
+     */
+    private String loginAsSeededAdmin() throws Exception {
+        LoginRequest login = new LoginRequest();
+        login.setEmail("admin@haulius.com");
+        login.setPassword("Test1234");
+        LoginResponse resp = read(mvc.perform(post("/api/auth/login")
                         .accept(MediaType.APPLICATION_JSON)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(om.writeValueAsString(adminReq)))
-                .andExpect(status().isCreated()), LoginResponse.class);
-        String adminToken = adminReg.getToken();
+                        .content(om.writeValueAsString(login)))
+                .andExpect(status().isOk()), LoginResponse.class);
+        return resp.getToken();
+    }
+
+    @Test
+    void brokerCreatesLoad_carrierBids_brokerApproves_brokerCancels() throws Exception {
+        String adminToken = loginAsSeededAdmin();
 
         // Register broker
         RegisterRequest regBroker = new RegisterRequest();
@@ -141,7 +146,7 @@ class AuthAndLoadWorkflowTest {
                 .andExpect(status().isOk());
 
         // Carrier bids
-        CreateBidRequest bidReq = new CreateBidRequest(loadId, new BigDecimal("1400"), true);
+        CreateBidRequest bidReq = new CreateBidRequest(loadId, new BigDecimal("1400"), true, null, null, null, null);
         BidResponse bid = read(mvc.perform(post("/api/loads/bid")
                         .accept(MediaType.APPLICATION_JSON)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + carrierToken)
@@ -175,20 +180,11 @@ class AuthAndLoadWorkflowTest {
     }
 
     @Test
-    void login_returns_frontend_auth_shape() throws Exception {
-        RegisterRequest reg = new RegisterRequest();
-        reg.setEmail("shape@example.com");
-        reg.setPassword("password123");
-        reg.setRole("BROKER");
-        read(mvc.perform(post("/api/auth/register")
-                        .accept(MediaType.APPLICATION_JSON)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(om.writeValueAsString(reg)))
-                .andExpect(status().isCreated()), LoginResponse.class);
-
+    void login_returns_frontend_auth_shape_for_admin() throws Exception {
+        // Admin login bypasses 2FA and returns a full LoginResponse
         LoginRequest login = new LoginRequest();
-        login.setEmail("shape@example.com");
-        login.setPassword("password123");
+        login.setEmail("admin@haulius.com");
+        login.setPassword("Test1234");
 
         LoginResponse resp = read(mvc.perform(post("/api/auth/login")
                         .accept(MediaType.APPLICATION_JSON)
@@ -198,8 +194,8 @@ class AuthAndLoadWorkflowTest {
 
         assertThat(resp.getToken()).isNotBlank();
         assertThat(resp.getUserId()).isNotBlank();
-        assertThat(resp.getEmail()).isEqualTo("shape@example.com");
-        assertThat(resp.getRole()).isIn("BROKER", "CARRIER", "ADMIN");
+        assertThat(resp.getEmail()).isEqualTo("admin@haulius.com");
+        assertThat(resp.getRole()).isEqualTo("ADMIN");
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -294,16 +290,7 @@ class AuthAndLoadWorkflowTest {
 
     @Test
     void testAdminApprovalGate() throws Exception {
-        // Create admin
-        RegisterAdminRequest adminReq = new RegisterAdminRequest();
-        adminReq.setEmail("admin-gate@example.com");
-        adminReq.setPassword("password123");
-        LoginResponse adminReg = read(mvc.perform(post("/api/auth/register-admin")
-                        .accept(MediaType.APPLICATION_JSON)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(om.writeValueAsString(adminReq)))
-                .andExpect(status().isCreated()), LoginResponse.class);
-        String adminToken = adminReg.getToken();
+        String adminToken = loginAsSeededAdmin();
 
         // Register carrier
         RegisterRequest reg = new RegisterRequest();
@@ -346,21 +333,11 @@ class AuthAndLoadWorkflowTest {
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
                 .andExpect(status().isOk());
 
-        // Login again to get fresh token reflecting approval
-        LoginRequest login = new LoginRequest();
-        login.setEmail("carrier-gate@example.com");
-        login.setPassword("password123");
-        LoginResponse freshLogin = read(mvc.perform(post("/api/auth/login")
-                        .accept(MediaType.APPLICATION_JSON)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(om.writeValueAsString(login)))
-                .andExpect(status().isOk()), LoginResponse.class);
-        assertThat(freshLogin.isAdminApproved()).isTrue();
-
-        // After approval: GET /api/loads should succeed (200)
+        // After approval: GET /api/loads should succeed with the same token
+        // (adminApproved is checked from DB, not from the token)
         mvc.perform(get("/api/loads")
                         .accept(MediaType.APPLICATION_JSON)
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + freshLogin.getToken()))
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + carrierToken))
                 .andExpect(status().isOk());
     }
 

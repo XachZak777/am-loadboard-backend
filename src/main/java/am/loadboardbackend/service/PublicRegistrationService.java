@@ -36,24 +36,9 @@ public class PublicRegistrationService {
         }
 
         String role = request.getRole().trim().toUpperCase();
-
         LoginResponse response = switch (role) {
-            case "BROKER" -> {
-                String company = "Broker Co " + Math.abs(request.getEmail().hashCode());
-                String mc = "MC-" + Math.abs(request.getEmail().hashCode());
-                String dot = "DOT-" + Math.abs(request.getEmail().hashCode());
-                var req = new am.loadboardbackend.dto.auth.RegisterBrokerFromPreviewRequest(
-                        request.getEmail(), request.getPassword(), company, mc, dot, null, null);
-                yield registrationService.registerBrokerWithPreview(req);
-            }
-            case "CARRIER" -> {
-                String emailHash = String.valueOf(Math.abs(request.getEmail().hashCode()));
-                var req = new am.loadboardbackend.dto.auth.RegisterCarrierFromPreviewRequest(
-                        request.getEmail(), request.getPassword(),
-                        "DOT-" + emailHash, "MC-" + emailHash,
-                        null, null, null, null, null, null, null, null, null, null, null);
-                yield registrationService.registerCarrierWithPreview(req);
-            }
+            case "BROKER" -> registrationService.registerBrokerMinimal(request.getEmail(), request.getPassword());
+            case "CARRIER" -> registrationService.registerCarrierMinimal(request.getEmail(), request.getPassword());
             default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid role. Expected BROKER or CARRIER");
         };
 

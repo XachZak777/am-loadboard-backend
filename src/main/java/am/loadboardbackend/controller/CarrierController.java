@@ -11,6 +11,7 @@ import am.loadboardbackend.model.User;
 import am.loadboardbackend.service.CarrierProfileService;
 import am.loadboardbackend.service.CarrierService;
 import am.loadboardbackend.service.DocumentStorageService;
+import am.loadboardbackend.service.RatingService;
 import am.loadboardbackend.service.RegistrationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +19,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -30,6 +32,7 @@ public class CarrierController {
     private final CarrierService carrierService;
     private final CarrierProfileService carrierProfileService;
     private final DocumentStorageService documentStorageService;
+    private final RatingService ratingService;
 
     @PostMapping("/register")
     public LoginResponse register(@RequestBody RegisterCarrierRequest request) {
@@ -61,19 +64,28 @@ public class CarrierController {
     @GetMapping("/{carrierId}/public")
     public ResponseEntity<CarrierPublicDto> getPublicInfo(@PathVariable UUID carrierId) {
         Carrier c = carrierService.getEntity(carrierId);
-        return ResponseEntity.ok(new CarrierPublicDto(
-                c.getDotNumber(),
-                c.getMcNumber(),
-                c.getLegalName(),
-                c.getDbaName(),
-                c.getCompanyName(),
-                c.getOperatingStatus(),
-                c.getSafetyRating(),
-                c.getPhyCity(),
-                c.getPhyState(),
-                c.getTotalPowerUnits(),
-                c.getPhoneNumber()
-        ));
+        long score = ratingService.computeRatingScore(carrierId, "carrier");
+        Integer ratingScore = score >= 0 ? (int) score : null;
+        return ResponseEntity.ok(toPublicDto(c, ratingScore));
+    }
+
+    /**
+     * GET /api/carriers/search?q=... — search registered carriers by name, DOT or MC.
+     * Requires authentication (brokers only in practice).
+     */
+    @GetMapping("/search")
+    public ResponseEntity<List<CarrierPublicDto>> searchCarriers(@RequestParam String q) {
+        if (q == null || q.isBlank() || q.length() < 2) {
+            return ResponseEntity.ok(List.of());
+        }
+        List<CarrierPublicDto> results = carrierService.search(q.trim()).stream()
+                .limit(20)
+                .map(c -> {
+                    long score = ratingService.computeRatingScore(c.getId(), "carrier");
+                    return toPublicDto(c, score >= 0 ? (int) score : null);
+                })
+                .toList();
+        return ResponseEntity.ok(results);
     }
 
     /**
@@ -137,6 +149,24 @@ public class CarrierController {
         DocumentUploadResponse response = documentStorageService.storeMcAuthority(
                 file, user.getCarrier().getId(), "CARRIER");
         return ResponseEntity.ok(response);
+    }
+
+    private static CarrierPublicDto toPublicDto(Carrier c, Integer ratingScore) {
+        return new CarrierPublicDto(
+                c.getId(),
+                c.getDotNumber(),
+                c.getMcNumber(),
+                c.getLegalName(),
+                c.getDbaName(),
+                c.getCompanyName(),
+                c.getOperatingStatus(),
+                c.getSafetyRating(),
+                c.getPhyCity(),
+                c.getPhyState(),
+                c.getTotalPowerUnits(),
+                c.getPhoneNumber(),
+                ratingScore
+        );
     }
 }
 

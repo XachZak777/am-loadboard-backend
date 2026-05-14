@@ -12,10 +12,12 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
+import org.springframework.util.AntPathMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Component
@@ -23,6 +25,26 @@ import java.util.UUID;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtUtil jwtUtil;
     private final UserRepository userRepository;
+
+    private static final AntPathMatcher PATH_MATCHER = new AntPathMatcher();
+    private static final Set<String> PUBLIC_PATTERNS = Set.of(
+            "/api/auth/**",
+            "/api/validate/**",
+            "/api/carriers/register",
+            "/api/brokers/register",
+            "/api/dealers/register",
+            "/api/loads/**",
+            "/api/files/**"
+    );
+
+    private boolean isPublicPath(HttpServletRequest request) {
+        String path = request.getServletPath();
+        if ("GET".equalsIgnoreCase(request.getMethod())
+                && PATH_MATCHER.match("/api/ratings/**", path)) {
+            return true;
+        }
+        return PUBLIC_PATTERNS.stream().anyMatch(p -> PATH_MATCHER.match(p, path));
+    }
 
     @Override
     protected void doFilterInternal(
@@ -32,10 +54,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     ) throws ServletException, IOException {
 
         String cookieToken = extractFromCookie(request);
-        if (cookieToken != null && jwtUtil.validate(cookieToken)) {
-            setAuthentication(cookieToken);
-            filterChain.doFilter(request, response);
-            return;
+        if (cookieToken != null) {
+            if (jwtUtil.validate(cookieToken)) {
+                setAuthentication(cookieToken);
+                filterChain.doFilter(request, response);
+                return;
+            } else if (!isPublicPath(request)) {
+                // Cookie is present but expired/invalid — return 401 so the frontend can redirect
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.setContentType("application/json");
+                response.getWriter().write("{\"message\":\"Session expired\"}");
+                return;
+            }
+            // Invalid cookie on a public path — fall through unauthenticated
         }
 
         String header = request.getHeader("Authorization");

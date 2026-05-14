@@ -50,7 +50,9 @@ public class EmailService {
                 String html = templateEngine.process(emailContext.getTemplateLocation(), thymeleafContext);
 
                 helper.setTo(to);
-                helper.setFrom(emailContext.getFrom());
+                if (emailContext.getFrom() != null) {
+                    helper.setFrom(emailContext.getFrom());
+                }
                 helper.setSubject(subject);
                 helper.setText(html, true);
 

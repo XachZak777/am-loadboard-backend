@@ -15,6 +15,7 @@ import am.loadboardbackend.service.BrokerProfileService;
 import am.loadboardbackend.service.BrokerService;
 import am.loadboardbackend.service.DocumentStorageService;
 import am.loadboardbackend.service.LoadPostingService;
+import am.loadboardbackend.service.RatingService;
 import am.loadboardbackend.service.RegistrationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -38,6 +39,7 @@ public class BrokerController {
     private final BrokerProfileService brokerProfileService;
     private final DocumentStorageService documentStorageService;
     private final UserRepository userRepository;
+    private final RatingService ratingService;
 
     @PostMapping("/register")
     public LoginResponse register(@RequestBody RegisterBrokerRequest request) {
@@ -72,6 +74,8 @@ public class BrokerController {
         String email = userRepository.findByBrokerId(brokerId)
                 .map(User::getEmail)
                 .orElse(null);
+        long score = ratingService.computeRatingScore(brokerId, "broker");
+        Integer ratingScore = score >= 0 ? (int) score : null;
         return ResponseEntity.ok(new BrokerPublicDto(
                 b.getMcNumber(),
                 b.getDotNumber(),
@@ -81,7 +85,8 @@ public class BrokerController {
                 b.getCity(),
                 b.getState(),
                 b.getPhoneNumber(),
-                email
+                email,
+                ratingScore
         ));
     }
 

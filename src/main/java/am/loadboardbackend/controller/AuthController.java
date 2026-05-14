@@ -6,9 +6,15 @@ import am.loadboardbackend.dto.auth.LoginResponse;
 import am.loadboardbackend.dto.auth.MeResponse;
 import am.loadboardbackend.dto.auth.RegisterRequest;
 import am.loadboardbackend.dto.auth.RegisterAdminRequest;
+import am.loadboardbackend.dto.auth.RequestLoginCodeRequest;
 import am.loadboardbackend.dto.auth.ResendVerificationRequest;
 import am.loadboardbackend.dto.auth.ResetPasswordRequest;
+import am.loadboardbackend.dto.auth.VerifyLoginCodeRequest;
+import am.loadboardbackend.mailing.LoginCodeEmailContext;
+import am.loadboardbackend.model.SecurityToken;
 import am.loadboardbackend.model.User;
+import am.loadboardbackend.service.EmailService;
+import am.loadboardbackend.service.SecurityTokenService;
 import am.loadboardbackend.security.LoginRateLimiter;
 import am.loadboardbackend.service.AuthService;
 import am.loadboardbackend.service.EmailVerificationService;
@@ -39,6 +45,8 @@ public class AuthController {
     private final RegistrationService registrationService;
     private final PublicRegistrationService publicRegistrationService;
     private final EmailVerificationService emailVerificationService;
+    private final SecurityTokenService securityTokenService;
+    private final EmailService emailService;
     private final LoginRateLimiter loginRateLimiter;
 
     @Value("${jwt.expiration-ms}")
@@ -51,7 +59,7 @@ public class AuthController {
     private String cookieSameSite;
 
     @PostMapping("/login")
-    public ResponseEntity<LoginResponse> login(
+    public ResponseEntity<?> login(
             @RequestBody LoginRequest request,
             HttpServletRequest httpRequest,
             HttpServletResponse httpResponse
@@ -61,18 +69,29 @@ public class AuthController {
                     "Too many login attempts. Please try again later.");
         }
 
-        LoginResponse loginResponse = authService.login(request.getEmail(), request.getPassword());
+        User user = authService.validateLoginCredentials(request.getEmail(), request.getPassword());
 
-        ResponseCookie jwtCookie = ResponseCookie.from("jwt", loginResponse.getToken())
-                .httpOnly(true)
-                .secure(cookieSecure)
-                .path("/")
-                .maxAge(Duration.ofMillis(jwtExpirationMs))
-                .sameSite(cookieSameSite)
-                .build();
-        httpResponse.addHeader(HttpHeaders.SET_COOKIE, jwtCookie.toString());
+        // Admins skip the email code step and receive a JWT directly
+        if (user.getRole() == am.loadboardbackend.model.UserRole.ROLE_ADMIN) {
+            LoginResponse loginResponse = authService.issueTokenForUser(user);
+            ResponseCookie jwtCookie = ResponseCookie.from("jwt", loginResponse.getToken())
+                    .httpOnly(true)
+                    .secure(cookieSecure)
+                    .path("/")
+                    .maxAge(Duration.ofMillis(jwtExpirationMs))
+                    .sameSite(cookieSameSite)
+                    .build();
+            httpResponse.addHeader(HttpHeaders.SET_COOKIE, jwtCookie.toString());
+            return ResponseEntity.ok(loginResponse);
+        }
 
-        return ResponseEntity.ok(loginResponse);
+        SecurityToken codeToken = securityTokenService.createLoginCodeToken(user);
+        LoginCodeEmailContext ctx = new LoginCodeEmailContext();
+        ctx.init(user);
+        ctx.setCode(codeToken.getToken());
+        emailService.sendEmail(ctx);
+
+        return ResponseEntity.ok(Map.of("email", user.getEmail()));
     }
 
     @PostMapping("/logout")
@@ -126,5 +145,35 @@ public class AuthController {
     public ResponseEntity<Map<String, String>> resetPassword(@RequestBody ResetPasswordRequest request) {
         emailVerificationService.resetPassword(request.token(), request.newPassword());
         return ResponseEntity.ok(Map.of("message", "Password reset successfully"));
+    }
+
+    @PostMapping("/request-login-code")
+    public ResponseEntity<Map<String, String>> requestLoginCode(@RequestBody RequestLoginCodeRequest request) {
+        User user = authService.findByEmailOrThrow(request.email());
+        SecurityToken codeToken = securityTokenService.createLoginCodeToken(user);
+        LoginCodeEmailContext ctx = new LoginCodeEmailContext();
+        ctx.init(user);
+        ctx.setCode(codeToken.getToken());
+        emailService.sendEmail(ctx);
+        return ResponseEntity.ok(Map.of("message", "Login code sent"));
+    }
+
+    @PostMapping("/verify-login-code")
+    public ResponseEntity<LoginResponse> verifyLoginCode(
+            @RequestBody VerifyLoginCodeRequest request,
+            HttpServletResponse httpResponse
+    ) {
+        User user = authService.findByEmailOrThrow(request.email());
+        securityTokenService.consumeLoginCode(request.code(), user);
+        LoginResponse loginResponse = authService.issueTokenForUser(user);
+        ResponseCookie jwtCookie = ResponseCookie.from("jwt", loginResponse.getToken())
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .path("/")
+                .maxAge(Duration.ofMillis(jwtExpirationMs))
+                .sameSite(cookieSameSite)
+                .build();
+        httpResponse.addHeader(HttpHeaders.SET_COOKIE, jwtCookie.toString());
+        return ResponseEntity.ok(loginResponse);
     }
 }

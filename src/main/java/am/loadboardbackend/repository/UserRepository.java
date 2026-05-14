@@ -13,6 +13,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     long countByRole(UserRole role);
     Optional<User> findByCarrierId(UUID carrierId);
     Optional<User> findByBrokerId(UUID brokerId);
+    Optional<User> findByDealerId(UUID dealerId);
     List<User> findByRoleNot(UserRole role);
     List<User> findByRoleNotAndAdminApprovedTrue(UserRole role);
     List<User> findByRoleNotAndAdminApprovedFalseAndDeclinedFalse(UserRole role);

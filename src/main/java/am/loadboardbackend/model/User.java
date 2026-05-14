@@ -1,5 +1,6 @@
 package am.loadboardbackend.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -30,12 +31,18 @@ public class User extends Auditable<String> {
     @JoinColumn(name = "broker_id", nullable = true)
     private Broker broker;
 
+    @ToString.Exclude
+    @OneToOne(optional = true, cascade = CascadeType.PERSIST)
+    @JoinColumn(name = "dealer_id", nullable = true)
+    private Dealer dealer;
+
     @Enumerated(EnumType.STRING)
     private UserRole role;
 
     @Column(unique = true, nullable = false)
     private String email;
 
+    @JsonIgnore
     @Column(nullable = false)
     private String passwordHash;
 

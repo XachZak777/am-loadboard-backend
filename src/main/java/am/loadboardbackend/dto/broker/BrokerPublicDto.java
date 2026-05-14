@@ -13,5 +13,6 @@ public record BrokerPublicDto(
         String city,
         String state,
         String phoneNumber,
-        String email
+        String email,
+        Integer ratingScore
 ) {}

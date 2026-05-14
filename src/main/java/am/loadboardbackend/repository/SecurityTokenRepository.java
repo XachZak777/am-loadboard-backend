@@ -18,6 +18,8 @@ public interface SecurityTokenRepository extends JpaRepository<SecurityToken, UU
 
     Optional<SecurityToken> findByTokenAndTokenType(String token, TokenType tokenType);
 
+    Optional<SecurityToken> findByTokenAndTokenTypeAndUser(String token, TokenType tokenType, User user);
+
     @Modifying
     @Query("DELETE FROM SecurityToken st WHERE st.user = :user AND st.tokenType = :tokenType")
     void deleteAllByUserAndTokenType(@Param("user") User user, @Param("tokenType") TokenType tokenType);

@@ -12,6 +12,7 @@ public class LoadAddress {
     private String zip;
     private String country;
 
-    // Optional but commonly needed for auto-transport style loads
     private String lotNumber;
+    private String contactName;
+    private String contactPhone;
 }

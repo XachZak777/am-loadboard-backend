@@ -18,6 +18,12 @@ public record CarrierBidWithLoadDto(
         LocalDateTime bidCreatedAt,
         LocalDateTime bidUpdatedAt,
 
+        // bid time preferences
+        LocalDate requestedPickupDate,
+        String requestedPickupTime,
+        LocalDate requestedDropDate,
+        String requestedDropTime,
+
         // load info
         String vehicleMake,
         String vehicleModel,

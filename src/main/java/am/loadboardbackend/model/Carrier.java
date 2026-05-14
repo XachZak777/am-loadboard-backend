@@ -67,6 +67,9 @@ public class Carrier {
     @Column(name = "tax_id", length = 20)
     private String taxId;
 
+    @Column(name = "preferred_lines", columnDefinition = "TEXT")
+    private String preferredLines;
+
     private LocalDateTime createdAt;
 
     @PrePersist

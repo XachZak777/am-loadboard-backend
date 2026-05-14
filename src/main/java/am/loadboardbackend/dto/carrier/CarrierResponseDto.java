@@ -14,5 +14,6 @@ public record CarrierResponseDto(
         String phyCity,
         String phyState,
         Integer totalDrivers,
-        Integer totalPowerUnits
+        Integer totalPowerUnits,
+        String preferredLines
 ) {}

@@ -26,7 +26,8 @@ public class CarrierMapper {
                 carrier.getPhyCity(),
                 carrier.getPhyState(),
                 carrier.getTotalDrivers(),
-                carrier.getTotalPowerUnits()
+                carrier.getTotalPowerUnits(),
+                carrier.getPreferredLines()
         );
     }
 

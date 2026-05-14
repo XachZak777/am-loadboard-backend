@@ -52,6 +52,31 @@ public class Broker {
     @Column(name = "tax_id", length = 20)
     private String taxId;
 
+    // Bond information (replaces insurance on the signup form)
+    @Column(name = "bond_company")
+    private String bondCompany;
+
+    @Column(name = "bond_policy_number")
+    private String bondPolicyNumber;
+
+    @Column(name = "bond_coverage")
+    private String bondCoverage;
+
+    @Column(name = "bond_effective_date")
+    private String bondEffectiveDate;
+
+    @Column(name = "bond_agent_first_name")
+    private String bondAgentFirstName;
+
+    @Column(name = "bond_agent_last_name")
+    private String bondAgentLastName;
+
+    @Column(name = "bond_agent_email")
+    private String bondAgentEmail;
+
+    @Column(name = "bond_agent_phone")
+    private String bondAgentPhone;
+
     private LocalDateTime createdAt;
 
     @PrePersist

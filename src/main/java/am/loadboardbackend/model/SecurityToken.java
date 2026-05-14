@@ -23,7 +23,7 @@ public class SecurityToken extends Auditable<String> {
     private String token;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 40)
+    @Column(nullable = false, columnDefinition = "varchar(40)")
     private TokenType tokenType;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -58,6 +58,7 @@ public class SecurityToken extends Auditable<String> {
     public enum TokenType {
         EMAIL_VERIFICATION,
         PASSWORD_RESET,
-        EMAIL_CHANGE
+        EMAIL_CHANGE,
+        LOGIN_CODE
     }
 }

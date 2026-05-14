@@ -16,12 +16,14 @@ public class LoadPosting {
     @GeneratedValue
     private UUID id;
 
-    // The broker who posted the load
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "broker_id", nullable = false)
+    @ManyToOne(optional = true)
+    @JoinColumn(name = "broker_id")
     private Broker broker;
 
-    // Once assigned, this references the carrier who accepted/was approved
+    @ManyToOne(optional = true)
+    @JoinColumn(name = "dealer_id")
+    private Dealer dealer;
+
     @ManyToOne
     @JoinColumn(name = "assigned_carrier_id")
     private Carrier assignedCarrier;
@@ -37,9 +39,6 @@ public class LoadPosting {
     @Column(name = "drop_type")
     private DropType dropType;
 
-    /**
-     * Pickup address for the load (separated from other address usage like Carrier physical address).
-     */
     @Embedded
     @AttributeOverrides({
         @AttributeOverride(name = "street", column = @Column(name = "pickup_street")),
@@ -47,13 +46,12 @@ public class LoadPosting {
         @AttributeOverride(name = "state", column = @Column(name = "pickup_state")),
         @AttributeOverride(name = "zip", column = @Column(name = "pickup_zip")),
         @AttributeOverride(name = "country", column = @Column(name = "pickup_country")),
-        @AttributeOverride(name = "lotNumber", column = @Column(name = "pickup_lot_number"))
+        @AttributeOverride(name = "lotNumber", column = @Column(name = "pickup_lot_number")),
+        @AttributeOverride(name = "contactName", column = @Column(name = "pickup_contact_name")),
+        @AttributeOverride(name = "contactPhone", column = @Column(name = "pickup_contact_phone"))
     })
     private LoadAddress pickupAddress;
 
-    /**
-     * Drop/delivery address for the load.
-     */
     @Embedded
     @AttributeOverrides({
         @AttributeOverride(name = "street", column = @Column(name = "drop_street")),
@@ -61,7 +59,9 @@ public class LoadPosting {
         @AttributeOverride(name = "state", column = @Column(name = "drop_state")),
         @AttributeOverride(name = "zip", column = @Column(name = "drop_zip")),
         @AttributeOverride(name = "country", column = @Column(name = "drop_country")),
-        @AttributeOverride(name = "lotNumber", column = @Column(name = "drop_lot_number"))
+        @AttributeOverride(name = "lotNumber", column = @Column(name = "drop_lot_number")),
+        @AttributeOverride(name = "contactName", column = @Column(name = "drop_contact_name")),
+        @AttributeOverride(name = "contactPhone", column = @Column(name = "drop_contact_phone"))
     })
     private LoadAddress dropAddress;
 
@@ -69,19 +69,52 @@ public class LoadPosting {
     @AttributeOverrides({
         @AttributeOverride(name = "make", column = @Column(name = "vehicle_make")),
         @AttributeOverride(name = "model", column = @Column(name = "vehicle_model")),
-        @AttributeOverride(name = "year", column = @Column(name = "vehicle_year"))
+        @AttributeOverride(name = "year", column = @Column(name = "vehicle_year")),
+        @AttributeOverride(name = "vehicleType", column = @Column(name = "vehicle_type")),
+        @AttributeOverride(name = "condition", column = @Column(name = "vehicle_condition")),
+        @AttributeOverride(name = "vin", column = @Column(name = "vehicle_vin")),
+        @AttributeOverride(name = "trailerType", column = @Column(name = "trailer_type")),
+        @AttributeOverride(name = "additionalInfo", column = @Column(name = "vehicle_additional_info"))
     })
     private VehicleInfo vehicle;
 
     private String description;
     private Double weight;
     private Double price;
+    private Double distance;
 
     @Column(name = "pickup_date")
     private LocalDate pickupDate;
 
+    @Column(name = "pickup_time")
+    private String pickupTime;
+
     @Column(name = "delivery_date")
     private LocalDate deliveryDate;
+
+    @Column(name = "delivery_time")
+    private String deliveryTime;
+
+    @Column(name = "contact_name")
+    private String contactName;
+
+    @Column(name = "contact_phone")
+    private String contactPhone;
+
+    @Column(name = "contact_email")
+    private String contactEmail;
+
+    @Column(name = "order_id")
+    private String orderId;
+
+    @Column(name = "payment_method")
+    private String paymentMethod;
+
+    @Column(name = "payment_timing")
+    private String paymentTiming;
+
+    @Column(name = "additional_vehicles", columnDefinition = "TEXT")
+    private String additionalVehicles;
 
     private LocalDateTime createdAt;
 
@@ -90,5 +123,5 @@ public class LoadPosting {
         createdAt = LocalDateTime.now();
     }
 
-    public static enum LoadStatus { OPEN, ASSIGNED, CANCELLED, COMPLETED }
+    public static enum LoadStatus { OPEN, ASSIGNED, PICKED_UP, DELIVERED, PAID, CANCELLED, COMPLETED }
 }

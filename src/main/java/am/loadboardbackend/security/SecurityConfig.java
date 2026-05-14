@@ -11,6 +11,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
@@ -61,9 +62,11 @@ public class SecurityConfig {
                                 "/api/auth/reset-password",
                                 "/api/carriers/register",
                                 "/api/brokers/register",
+                                "/api/dealers/register",
                                 "/api/loads/**",
                                 "/api/files/**"
                         ).permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/ratings/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(sess ->

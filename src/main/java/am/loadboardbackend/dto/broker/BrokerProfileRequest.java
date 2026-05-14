@@ -19,5 +19,13 @@ public record BrokerProfileRequest(
         String mailingAddress,
         String city,
         String state,
-        String zipCode
+        String zipCode,
+        String bondCompany,
+        String bondPolicyNumber,
+        String bondCoverage,
+        String bondEffectiveDate,
+        String bondAgentFirstName,
+        String bondAgentLastName,
+        String bondAgentEmail,
+        String bondAgentPhone
 ) {}

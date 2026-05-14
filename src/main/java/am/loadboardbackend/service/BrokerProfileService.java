@@ -43,6 +43,14 @@ public class BrokerProfileService {
         if (req.city() != null)               broker.setCity(req.city());
         if (req.state() != null)              broker.setState(req.state());
         if (req.zipCode() != null)            broker.setZipCode(req.zipCode());
+        if (req.bondCompany() != null)         broker.setBondCompany(req.bondCompany());
+        if (req.bondPolicyNumber() != null)    broker.setBondPolicyNumber(req.bondPolicyNumber());
+        if (req.bondCoverage() != null)        broker.setBondCoverage(req.bondCoverage());
+        if (req.bondEffectiveDate() != null)   broker.setBondEffectiveDate(req.bondEffectiveDate());
+        if (req.bondAgentFirstName() != null)  broker.setBondAgentFirstName(req.bondAgentFirstName());
+        if (req.bondAgentLastName() != null)   broker.setBondAgentLastName(req.bondAgentLastName());
+        if (req.bondAgentEmail() != null)      broker.setBondAgentEmail(req.bondAgentEmail());
+        if (req.bondAgentPhone() != null)      broker.setBondAgentPhone(req.bondAgentPhone());
 
         brokerRepository.save(broker);
 
@@ -69,9 +77,6 @@ public class BrokerProfileService {
 
         return broker.getCompanyName() != null
                 && broker.getPhoneNumber() != null
-                && broker.getInsuranceCompany() != null
-                && broker.getCargoInsurance() != null
-                && broker.getLiabilityInsurance() != null
                 && broker.getTaxIdType() != null
                 && broker.getTaxId() != null;
     }

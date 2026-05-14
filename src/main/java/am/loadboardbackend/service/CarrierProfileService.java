@@ -43,6 +43,7 @@ public class CarrierProfileService {
         if (req.city() != null)               carrier.setCity(req.city());
         if (req.state() != null)              carrier.setState(req.state());
         if (req.zipCode() != null)            carrier.setZipCode(req.zipCode());
+        if (req.preferredLines() != null)     carrier.setPreferredLines(req.preferredLines());
 
         carrierRepository.save(carrier);
 

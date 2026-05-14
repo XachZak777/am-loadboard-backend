@@ -1,6 +1,7 @@
 package am.loadboardbackend.dto.load;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -12,5 +13,9 @@ public record BidResponse(
         boolean bookNow,
         String status,
         LocalDateTime createdAt,
-        LocalDateTime updatedAt
+        LocalDateTime updatedAt,
+        LocalDate requestedPickupDate,
+        String requestedPickupTime,
+        LocalDate requestedDropDate,
+        String requestedDropTime
 ) {}

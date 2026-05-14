@@ -49,6 +49,16 @@ public class LoadPostingController {
         return ResponseEntity.ok(list);
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<LoadPostingDto> getLoad(@PathVariable UUID id) {
+        return ResponseEntity.ok(loadService.getLoad(id));
+    }
+
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<LoadPostingDto> advanceLoadStatus(@PathVariable UUID id) {
+        return ResponseEntity.ok(loadService.advanceLoadStatus(id));
+    }
+
     @GetMapping("/broker/my-loads")
     public ResponseEntity<List<LoadPostingDto>> myBrokerLoads() {
         return ResponseEntity.ok(loadService.listMyBrokerLoads());
@@ -60,6 +70,13 @@ public class LoadPostingController {
         return ResponseEntity.ok(resp);
     }
 
+    @PutMapping("/bid/{bidId}")
+    public ResponseEntity<am.loadboardbackend.dto.load.BidResponse> updateBid(
+            @PathVariable java.util.UUID bidId,
+            @RequestBody am.loadboardbackend.dto.load.UpdateBidRequest req) {
+        return ResponseEntity.ok(loadService.updateBid(bidId, req));
+    }
+
     @GetMapping("/{id}/bids")
     public ResponseEntity<List<am.loadboardbackend.dto.load.BidResponse>> listBids(@PathVariable java.util.UUID id) {
         return ResponseEntity.ok(loadService.listBids(id));
@@ -69,6 +86,17 @@ public class LoadPostingController {
     public ResponseEntity<Void> approveBid(@PathVariable java.util.UUID id, @PathVariable java.util.UUID bidId) {
         loadService.approveBid(bidId);
         return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/{id}/auto-assign")
+    public ResponseEntity<LoadPostingDto> autoAssignCarrier(@PathVariable UUID id) {
+        return ResponseEntity.ok(loadService.autoAssignCarrier(id));
+    }
+
+    @PostMapping("/{id}/assign/{carrierId}")
+    public ResponseEntity<LoadPostingDto> directAssignCarrier(
+            @PathVariable UUID id, @PathVariable UUID carrierId) {
+        return ResponseEntity.ok(loadService.directAssignCarrier(id, carrierId));
     }
 
     @PostMapping("/{id}/cancel")

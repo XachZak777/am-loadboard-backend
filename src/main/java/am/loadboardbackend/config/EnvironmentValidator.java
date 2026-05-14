@@ -2,12 +2,14 @@ package am.loadboardbackend.config;
 
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @Component
+@Profile("prod")
 @Slf4j
 public class EnvironmentValidator {
 

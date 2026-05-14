@@ -5,6 +5,7 @@ package am.loadboardbackend.dto.carrier;
  * when they review bids — no sensitive financial/tax data exposed.
  */
 public record CarrierPublicDto(
+        java.util.UUID id,
         String dotNumber,
         String mcNumber,
         String legalName,
@@ -15,5 +16,6 @@ public record CarrierPublicDto(
         String phyCity,
         String phyState,
         Integer totalPowerUnits,
-        String phoneNumber
+        String phoneNumber,
+        Integer ratingScore
 ) {}

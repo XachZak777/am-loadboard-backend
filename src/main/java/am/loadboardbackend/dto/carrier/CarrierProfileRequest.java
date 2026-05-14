@@ -19,5 +19,6 @@ public record CarrierProfileRequest(
         String mailingAddress,
         String city,
         String state,
-        String zipCode
+        String zipCode,
+        String preferredLines
 ) {}

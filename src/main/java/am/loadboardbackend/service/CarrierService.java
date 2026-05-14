@@ -35,4 +35,8 @@ public class CarrierService {
         return carrierRepository.findById(carrierId)
                 .orElseThrow(() -> new RuntimeException("Carrier not found"));
     }
+
+    public List<Carrier> search(String query) {
+        return carrierRepository.searchByQuery(query);
+    }
 }
