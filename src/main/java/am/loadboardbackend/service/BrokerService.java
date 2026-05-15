@@ -6,6 +6,7 @@ import am.loadboardbackend.repository.BrokerRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -30,5 +31,9 @@ public class BrokerService {
         return repo.findById(brokerId)
                 .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
                         org.springframework.http.HttpStatus.NOT_FOUND, "Broker not found"));
+    }
+
+    public List<Broker> search(String query) {
+        return repo.searchByQuery(query);
     }
 }

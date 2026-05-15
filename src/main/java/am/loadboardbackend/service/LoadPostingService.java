@@ -505,7 +505,7 @@ public class LoadPostingService {
         }
         LoadPosting load = loadRepo.findById(loadId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Load not found"));
-        if (load.getStatus() != LoadPosting.LoadStatus.OPEN) {
+        if (load.getStatus() != null && load.getStatus() != LoadPosting.LoadStatus.OPEN) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Load must be OPEN to assign a carrier");
         }
         Carrier carrier = carrierRepo.findById(carrierId)
@@ -535,7 +535,7 @@ public class LoadPostingService {
         }
         LoadPosting load = loadRepo.findById(loadId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Load not found"));
-        if (load.getStatus() != LoadPosting.LoadStatus.OPEN) {
+        if (load.getStatus() != null && load.getStatus() != LoadPosting.LoadStatus.OPEN) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Load must be OPEN for auto-assignment");
         }
         List<Bid> pending = bidRepo.findAllByLoadId(loadId).stream()

@@ -76,7 +76,33 @@ public class BrokerController {
                 .orElse(null);
         long score = ratingService.computeRatingScore(brokerId, "broker");
         Integer ratingScore = score >= 0 ? (int) score : null;
-        return ResponseEntity.ok(new BrokerPublicDto(
+        return ResponseEntity.ok(toPublicDto(b, email, ratingScore));
+    }
+
+    /**
+     * GET /api/brokers/search?q=... — search registered brokers by name, DOT or MC.
+     */
+    @GetMapping("/search")
+    public ResponseEntity<List<BrokerPublicDto>> searchBrokers(@RequestParam String q) {
+        if (q == null || q.isBlank() || q.length() < 2) {
+            return ResponseEntity.ok(List.of());
+        }
+        List<BrokerPublicDto> results = brokerService.search(q.trim()).stream()
+                .limit(20)
+                .map(b -> {
+                    String email = userRepository.findByBrokerId(b.getId())
+                            .map(User::getEmail)
+                            .orElse(null);
+                    long score = ratingService.computeRatingScore(b.getId(), "broker");
+                    return toPublicDto(b, email, score >= 0 ? (int) score : null);
+                })
+                .toList();
+        return ResponseEntity.ok(results);
+    }
+
+    private BrokerPublicDto toPublicDto(Broker b, String email, Integer ratingScore) {
+        return new BrokerPublicDto(
+                b.getId(),
                 b.getMcNumber(),
                 b.getDotNumber(),
                 b.getLegalName(),
@@ -87,7 +113,7 @@ public class BrokerController {
                 b.getPhoneNumber(),
                 email,
                 ratingScore
-        ));
+        );
     }
 
     @PostMapping("/loads")
