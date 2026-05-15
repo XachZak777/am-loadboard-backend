@@ -22,6 +22,12 @@ public class FmcsaContentDeserializer extends StdDeserializer<FmcsaContent> {
 
     @Override
     public FmcsaContent deserialize(JsonParser p, DeserializationContext ctx) throws JacksonException {
+        // FMCSA error response: content is a plain string like "We encountered an error..."
+        if (p.currentToken() == JsonToken.VALUE_STRING) {
+            p.getValueAsString(); // consume the token
+            return null;
+        }
+
         if (p.currentToken() == JsonToken.START_ARRAY) {
             // MC / docket-number endpoint returns an array — take the first element
             FmcsaContent first = null;
@@ -29,7 +35,7 @@ public class FmcsaContentDeserializer extends StdDeserializer<FmcsaContent> {
                 if (p.currentToken() == JsonToken.START_OBJECT && first == null) {
                     first = ctx.readValue(p, FmcsaContent.class);
                 } else {
-                    p.skipChildren(); // skip any unexpected extra entries
+                    p.skipChildren();
                 }
             }
             return first;

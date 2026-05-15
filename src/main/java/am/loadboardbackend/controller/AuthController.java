@@ -10,6 +10,7 @@ import am.loadboardbackend.dto.auth.RequestLoginCodeRequest;
 import am.loadboardbackend.dto.auth.ResendVerificationRequest;
 import am.loadboardbackend.dto.auth.ResetPasswordRequest;
 import am.loadboardbackend.dto.auth.VerifyLoginCodeRequest;
+import am.loadboardbackend.config.AppProperties;
 import am.loadboardbackend.mailing.LoginCodeEmailContext;
 import am.loadboardbackend.model.SecurityToken;
 import am.loadboardbackend.model.User;
@@ -48,6 +49,7 @@ public class AuthController {
     private final SecurityTokenService securityTokenService;
     private final EmailService emailService;
     private final LoginRateLimiter loginRateLimiter;
+    private final AppProperties appProperties;
 
     @Value("${jwt.expiration-ms}")
     private long jwtExpirationMs;
@@ -87,7 +89,7 @@ public class AuthController {
 
         SecurityToken codeToken = securityTokenService.createLoginCodeToken(user);
         LoginCodeEmailContext ctx = new LoginCodeEmailContext();
-        ctx.init(user);
+        ctx.init(user, appProperties.getMail().getFrom(), appProperties.getFrontend().getBaseUrl());
         ctx.setCode(codeToken.getToken());
         emailService.sendEmail(ctx);
 
@@ -152,7 +154,7 @@ public class AuthController {
         User user = authService.findByEmailOrThrow(request.email());
         SecurityToken codeToken = securityTokenService.createLoginCodeToken(user);
         LoginCodeEmailContext ctx = new LoginCodeEmailContext();
-        ctx.init(user);
+        ctx.init(user, appProperties.getMail().getFrom(), appProperties.getFrontend().getBaseUrl());
         ctx.setCode(codeToken.getToken());
         emailService.sendEmail(ctx);
         return ResponseEntity.ok(Map.of("message", "Login code sent"));

@@ -1,7 +1,9 @@
 package am.loadboardbackend.service;
 
+import am.loadboardbackend.config.AppProperties;
 import am.loadboardbackend.mailing.AbstractEmailContext;
 import jakarta.mail.MessagingException;
+import java.io.UnsupportedEncodingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +27,7 @@ public class EmailService {
 
     private final JavaMailSender mailSender;
     private final SpringTemplateEngine templateEngine;
+    private final AppProperties appProperties;
 
     /**
      * Sends an HTML email rendered from a Thymeleaf template.
@@ -49,10 +52,11 @@ public class EmailService {
                 thymeleafContext.setVariables(emailContext.getContext());
                 String html = templateEngine.process(emailContext.getTemplateLocation(), thymeleafContext);
 
+                String from = emailContext.getFrom() != null
+                        ? emailContext.getFrom()
+                        : appProperties.getMail().getFrom();
                 helper.setTo(to);
-                if (emailContext.getFrom() != null) {
-                    helper.setFrom(emailContext.getFrom());
-                }
+                helper.setFrom(from, appProperties.getMail().getFromName());
                 helper.setSubject(subject);
                 helper.setText(html, true);
 
@@ -60,7 +64,7 @@ public class EmailService {
                 log.info("Email sent to={} subject={} attempt={}", to, subject, attempt);
                 return; // success — stop retrying
 
-            } catch (MessagingException | MailException e) {
+            } catch (MessagingException | MailException | UnsupportedEncodingException e) {
                 boolean isTimeout = e.getMessage() != null &&
                         (e.getMessage().contains("timeout") || e.getMessage().contains("Timeout")
                                 || e.getMessage().contains("timed out"));

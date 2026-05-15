@@ -63,6 +63,10 @@ public class FmcsaClient {
         for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
             try {
                 T result = restTemplate.getForObject(url, responseType);
+                if (result instanceof FmcsaCarrierResponse r && r.getContent() == null) {
+                    throw new ResponseStatusException(HttpStatus.NOT_FOUND,
+                            "Carrier not found in FMCSA for " + context);
+                }
                 if (attempt > 1) {
                     log.info("FMCSA call succeeded on attempt {} for {}", attempt, context);
                 }

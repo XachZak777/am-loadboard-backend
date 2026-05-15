@@ -7,6 +7,7 @@ import org.springframework.http.HttpRequest;
 import org.springframework.http.client.ClientHttpRequestExecution;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.client.ClientHttpResponse;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
@@ -26,9 +27,11 @@ public class RestTemplateConfig {
      */
     @Bean
     public RestTemplate restTemplate(RestTemplateBuilder builder) {
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout((int) Duration.ofSeconds(15).toMillis());
+        factory.setReadTimeout((int) Duration.ofSeconds(45).toMillis());
         return builder
-                .connectTimeout(Duration.ofSeconds(10))
-                .readTimeout(Duration.ofSeconds(15))
+                .requestFactory(() -> factory)
                 .additionalInterceptors(new FmcsaUserAgentInterceptor())
                 .build();
     }
@@ -56,10 +59,8 @@ public class RestTemplateConfig {
             request.getHeaders().set("User-Agent",       BROWSER_UA);
             request.getHeaders().set("Accept",           "application/json, text/plain, */*");
             request.getHeaders().set("Accept-Language",  "en-US,en;q=0.9");
-            request.getHeaders().set("Accept-Encoding",  "gzip, deflate, br");
             request.getHeaders().set("Referer",          "https://safer.fmcsa.dot.gov/");
             request.getHeaders().set("Cache-Control",    "no-cache");
-            request.getHeaders().set("Connection",       "keep-alive");
             return execution.execute(request, body);
         }
     }

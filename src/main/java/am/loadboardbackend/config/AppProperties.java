@@ -26,7 +26,7 @@ public class AppProperties {
     @Getter
     @Setter
     public static class Frontend {
-        private String baseUrl = "http://localhost:5173";
+        private String baseUrl;
     }
 
     @Getter

@@ -24,6 +24,8 @@ public class EnvironmentValidator {
         checkRequired("JWT_EXPIRATION_MS", missing);
         checkRequired("MAIL_USERNAME", missing);
         checkRequired("MAIL_PASSWORD", missing);
+        checkRequired("FRONTEND_BASE_URL", missing);
+        checkRequired("ALLOWED_ORIGINS", missing);
 
         checkJwtSecretStrength();
 
