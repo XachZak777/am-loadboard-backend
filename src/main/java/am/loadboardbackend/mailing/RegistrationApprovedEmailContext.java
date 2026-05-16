@@ -29,4 +29,8 @@ public class RegistrationApprovedEmailContext extends AbstractEmailContext {
         put("role", role);
         put("companyName", companyName);
     }
+
+    public void buildLoginUrl(String baseUrl) {
+        put("loginUrl", baseUrl + "/login");
+    }
 }

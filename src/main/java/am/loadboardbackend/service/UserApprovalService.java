@@ -151,6 +151,7 @@ public class UserApprovalService {
             RegistrationApprovedEmailContext ctx = new RegistrationApprovedEmailContext();
             ctx.init(user);
             ctx.setFrom(appProperties.getMail().getFrom());
+            ctx.buildLoginUrl(appProperties.getFrontend().getBaseUrl());
             emailService.sendEmail(ctx);
             log.info("Approval email queued for userId={} email={}", user.getId(), user.getEmail());
         } catch (Exception e) {
