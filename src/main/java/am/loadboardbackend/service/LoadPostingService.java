@@ -10,6 +10,7 @@ import am.loadboardbackend.dto.load.LoadPostingDto;
 import am.loadboardbackend.dto.load.UpdateBidRequest;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
+import am.loadboardbackend.mailing.BidApprovedEmailContext;
 import am.loadboardbackend.mailing.BidPlacedEmailContext;
 import am.loadboardbackend.mailing.BidRejectedEmailContext;
 import am.loadboardbackend.mailing.LoadStatusUpdateEmailContext;
@@ -495,6 +496,8 @@ public class LoadPostingService {
                     bidRepo.save(other);
                     notifyCarrierOfRejection(other, load);
                 });
+
+        notifyCarrierOfApproval(bid.getCarrier(), bid, load);
     }
 
     @Transactional
@@ -522,6 +525,8 @@ public class LoadPostingService {
         load.setAssignedCarrier(carrier);
         load.setStatus(LoadPosting.LoadStatus.ASSIGNED);
         loadRepo.save(load);
+
+        notifyCarrierOfApproval(carrier, null, load);
 
         log.info("Direct assignment: load {} assigned to carrier {}", loadId, carrierId);
         return toDto(load);
@@ -674,6 +679,26 @@ public class LoadPostingService {
             emailService.sendEmail(ctx);
         } catch (Exception e) {
             log.error("Failed to send bid rejection email for bidId={}: {}", bid.getId(), e.getMessage(), e);
+        }
+    }
+
+    private void notifyCarrierOfApproval(Carrier carrier, Bid bid, LoadPosting load) {
+        if (carrier == null) return;
+        try {
+            String carrierEmail = userRepository.findByCarrierId(carrier.getId())
+                    .map(User::getEmail)
+                    .orElse(null);
+            if (carrierEmail == null) return;
+
+            String carrierName = carrier.getCompanyName() != null
+                    ? carrier.getCompanyName()
+                    : carrier.getLegalName();
+
+            BidApprovedEmailContext ctx = new BidApprovedEmailContext();
+            ctx.init(carrierEmail, carrierName, bid, load, appProperties.getMail().getFrom(), appProperties.getFrontend().getBaseUrl());
+            emailService.sendEmail(ctx);
+        } catch (Exception e) {
+            log.error("Failed to send bid approval email for carrierId={}: {}", carrier.getId(), e.getMessage(), e);
         }
     }
 

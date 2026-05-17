@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Load Confirmed</title>
+    <style>
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; background: #f1f5f9; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
+        .outer { padding: 40px 16px; }
+        .card { max-width: 580px; margin: 0 auto; background: #ffffff; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.10); }
+        .top-bar { background: #0f172a; padding: 18px 36px; }
+        .top-bar .brand { color: #f1f5f9; font-size: 13px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; }
+        .hero { background: #1e293b; padding: 32px 36px 28px; border-bottom: 1px solid #e2e8f0; }
+        .hero h1 { margin: 0 0 6px; color: #f8fafc; font-size: 20px; font-weight: 700; }
+        .hero p  { margin: 0; color: #94a3b8; font-size: 13px; }
+        .badge { display: inline-block; margin-bottom: 14px; padding: 4px 12px; background: #16a34a; color: #f0fdf4; font-size: 11px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; border-radius: 20px; }
+        .body  { padding: 28px 36px; color: #374151; }
+        .body p { line-height: 1.7; margin: 0 0 14px; font-size: 14px; }
+        .label { font-size: 11px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: #64748b; margin-bottom: 8px; }
+        .detail-table { width: 100%; border-collapse: collapse; margin: 4px 0 20px; }
+        .detail-table td { padding: 10px 0; font-size: 14px; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+        .detail-table td:first-child { color: #64748b; width: 38%; font-weight: 500; }
+        .detail-table td:last-child  { color: #0f172a; font-weight: 600; text-align: right; }
+        .detail-table tr:last-child td { border-bottom: none; }
+        .cta-wrap { margin: 24px 0 8px; }
+        .btn { display: inline-block; padding: 13px 28px; background: #0f172a; color: #f8fafc !important; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px; letter-spacing: .3px; }
+        .note { font-size: 12px; color: #94a3b8; margin-top: 20px; line-height: 1.6; }
+        .footer { padding: 18px 36px; background: #f8fafc; text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #e2e8f0; }
+    </style>
+</head>
+<body>
+<div class="outer">
+<div class="card">
+    <div class="top-bar">
+        <span class="brand">Haulius LoadBoard</span>
+    </div>
+    <div class="hero">
+        <h1>You've Been Assigned a Load</h1>
+        <p th:text="${vehicleSummary + ' — ' + pickupCity + ', ' + pickupState + ' to ' + dropCity + ', ' + dropState}">Vehicle — Route</p>
+    </div>
+    <div class="body">
+        <span class="badge">Confirmed</span>
+        <p>Hi <strong th:text="${carrierName}">Carrier</strong>,</p>
+        <p>Great news — you have been selected to transport this load. Please review the details below and log in to your dashboard to confirm pickup arrangements.</p>
+
+        <div class="label">Load Details</div>
+        <table class="detail-table">
+            <tr>
+                <td>Vehicle</td>
+                <td th:text="${vehicleSummary}">Vehicle</td>
+            </tr>
+            <tr>
+                <td>Route</td>
+                <td>
+                    <span th:text="${pickupCity}">City</span>, <span th:text="${pickupState}">ST</span>
+                    &nbsp;&rarr;&nbsp;
+                    <span th:text="${dropCity}">City</span>, <span th:text="${dropState}">ST</span>
+                </td>
+            </tr>
+            <tr>
+                <td>Pickup Date</td>
+                <td th:text="${pickupDate}">—</td>
+            </tr>
+            <tr>
+                <td>Price</td>
+                <td th:text="${price}">$0</td>
+            </tr>
+            <tr th:if="${bidAmount != null}">
+                <td>Your Bid</td>
+                <td th:text="${bidAmount}">$0</td>
+            </tr>
+        </table>
+
+        <div class="cta-wrap">
+            <a th:href="${dashboardUrl}" class="btn">View My Assigned Loads</a>
+        </div>
+
+        <p class="note">
+            Please log in and mark the load as picked up once you have the vehicle in your possession.
+            If you have any questions, contact the broker directly through the platform.
+        </p>
+    </div>
+    <div class="footer">
+        &copy; 2026 Haulius LoadBoard &mdash; All rights reserved.
+    </div>
+</div>
+</div>
+</body>
+</html>
