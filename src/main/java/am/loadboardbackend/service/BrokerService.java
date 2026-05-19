@@ -22,8 +22,27 @@ public class BrokerService {
                 b.getMcNumber(),
                 b.getDotNumber(),
                 b.getLegalName(),
+                b.getCompanyName(),
                 b.getOperatingStatus(),
-                b.isBrokerAuthorityActive()
+                b.isBrokerAuthorityActive(),
+                b.getPhoneNumber(),
+                b.getMailingAddress(),
+                b.getCity(),
+                b.getState(),
+                b.getZipCode(),
+                b.getInsuranceCompany(),
+                b.getCargoInsurance(),
+                b.getLiabilityInsurance(),
+                b.getTaxIdType(),
+                b.getTaxId(),
+                b.getBondCompany(),
+                b.getBondPolicyNumber(),
+                b.getBondCoverage(),
+                b.getBondEffectiveDate(),
+                b.getBondAgentFirstName(),
+                b.getBondAgentLastName(),
+                b.getBondAgentEmail(),
+                b.getBondAgentPhone()
         );
     }
 

@@ -12,6 +12,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -27,7 +28,9 @@ import java.util.UUID;
 public class DocumentStorageService {
 
     private static final long MAX_SIZE_BYTES = 5 * 1024 * 1024L; // 5 MB
-    private static final Set<String> ALLOWED_EXTENSIONS = Set.of("pdf", "doc", "docx");
+    private static final Set<String> ALLOWED_EXTENSIONS = Set.of(
+            "pdf", "doc", "docx",
+            "png", "jpg", "jpeg", "webp", "gif", "heic", "heif");
 
     private final DocumentRepository documentRepository;
     private final DocumentFileService documentFileService;
@@ -110,6 +113,27 @@ public class DocumentStorageService {
         );
     }
 
+    /**
+     * List all documents belonging to an owner.
+     */
+    public List<Document> listDocuments(UUID ownerId, String ownerType) {
+        return documentRepository.findByOwnerIdAndOwnerType(ownerId, ownerType);
+    }
+
+    /**
+     * Delete a document by ID, verifying ownership before deletion.
+     */
+    @Transactional
+    public void deleteDocument(UUID documentId, UUID ownerId, String ownerType) {
+        Document doc = documentRepository.findById(documentId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Document not found"));
+        if (!doc.getOwnerId().equals(ownerId) || !doc.getOwnerType().equals(ownerType)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not authorized to delete this document");
+        }
+        documentRepository.delete(doc);
+        log.info("Document deleted id={} ownerId={}", documentId, ownerId);
+    }
+
     // ── Private helpers ───────────────────────────────────────────────────────
 
     private void validateFile(MultipartFile file) {
@@ -123,7 +147,7 @@ public class DocumentStorageService {
                 file.getOriginalFilename() != null ? file.getOriginalFilename() : ""));
         if (!ALLOWED_EXTENSIONS.contains(ext.toLowerCase())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Only PDF, DOC, or DOCX files are allowed");
+                    "Only PDF, DOC, DOCX, PNG, JPG, JPEG, WEBP, GIF, or HEIC files are allowed");
         }
     }
 
@@ -136,10 +160,15 @@ public class DocumentStorageService {
 
     private String resolveContentType(String extension) {
         return switch (extension.toLowerCase()) {
-            case "pdf"  -> "application/pdf";
-            case "doc"  -> "application/msword";
-            case "docx" -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-            default     -> "application/octet-stream";
+            case "pdf"        -> "application/pdf";
+            case "doc"        -> "application/msword";
+            case "docx"       -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+            case "png"        -> "image/png";
+            case "jpg", "jpeg" -> "image/jpeg";
+            case "webp"       -> "image/webp";
+            case "gif"        -> "image/gif";
+            case "heic", "heif" -> "image/heic";
+            default           -> "application/octet-stream";
         };
     }
 }

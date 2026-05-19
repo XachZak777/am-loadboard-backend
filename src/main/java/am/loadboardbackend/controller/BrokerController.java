@@ -1,5 +1,6 @@
 package am.loadboardbackend.controller;
 
+import am.loadboardbackend.dto.admin.AdminDocumentDto;
 import am.loadboardbackend.dto.auth.LoginResponse;
 import am.loadboardbackend.dto.broker.BrokerProfileRequest;
 import am.loadboardbackend.dto.broker.BrokerPublicDto;
@@ -190,6 +191,35 @@ public class BrokerController {
         DocumentUploadResponse response = documentStorageService.storeMcAuthority(
                 file, user.getBroker().getId(), "BROKER");
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * GET /api/brokers/documents — list all documents uploaded by this broker.
+     */
+    @GetMapping("/documents")
+    public ResponseEntity<List<AdminDocumentDto>> listDocuments(@AuthenticationPrincipal User user) {
+        if (user.getBroker() == null) return ResponseEntity.ok(List.of());
+        List<AdminDocumentDto> docs = documentStorageService
+                .listDocuments(user.getBroker().getId(), "BROKER")
+                .stream()
+                .map(d -> new AdminDocumentDto(d.getId(), d.getDocumentType(), d.getOriginalName(), d.getFileUrl(), d.getUploadedAt()))
+                .toList();
+        return ResponseEntity.ok(docs);
+    }
+
+    /**
+     * DELETE /api/brokers/documents/{documentId} — delete one of this broker's documents.
+     */
+    @DeleteMapping("/documents/{documentId}")
+    public ResponseEntity<Void> deleteDocument(
+            @AuthenticationPrincipal User user,
+            @PathVariable UUID documentId) {
+        if (user.getBroker() == null) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST, "No broker profile found");
+        }
+        documentStorageService.deleteDocument(documentId, user.getBroker().getId(), "BROKER");
+        return ResponseEntity.noContent().build();
     }
 }
 

@@ -52,10 +52,6 @@ public class AuthService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Please verify your email address before logging in");
         }
 
-        if (user.getRole() != UserRole.ROLE_ADMIN && !user.isAdminApproved()) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Your account is pending admin approval. You will be notified once approved.");
-        }
-
         if (user.getFailedLoginAttempts() > 0 || user.getLockedUntil() != null) {
             user.setFailedLoginAttempts(0);
             user.setLockedUntil(null);
@@ -74,8 +70,24 @@ public class AuthService {
                 user.getId().toString(),
                 user.getEmail(),
                 user.getRole() != null ? user.getRole().name().replace("ROLE_", "") : null,
-                user.isAdminApproved()
+                user.isAdminApproved(),
+                resolveCompanyName(user)
         );
+    }
+
+    private String resolveCompanyName(User user) {
+        if (user.getCarrier() != null) {
+            String name = user.getCarrier().getLegalName();
+            return (name != null && !name.isBlank()) ? name : user.getCarrier().getCompanyName();
+        }
+        if (user.getBroker() != null) {
+            String name = user.getBroker().getLegalName();
+            return (name != null && !name.isBlank()) ? name : user.getBroker().getCompanyName();
+        }
+        if (user.getDealer() != null) {
+            return user.getDealer().getCompanyName();
+        }
+        return null;
     }
 
     public User findByEmailOrThrow(String email) {

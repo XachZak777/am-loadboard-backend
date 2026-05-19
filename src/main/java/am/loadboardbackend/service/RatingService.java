@@ -52,7 +52,10 @@ public class RatingService {
         return buildResponse(targetId, targetType);
     }
 
-    private static final Set<String> VALID_TAGS = Set.of("communication", "payment", "accuracy");
+    private static final Set<String> VALID_TAGS = Set.of(
+            "communication", "payment", "accuracy",
+            "on_time", "safe_delivery", "professional"
+    );
 
     @Transactional
     public void submitRating(User submitter, SubmitRatingRequest req) {
@@ -105,7 +108,10 @@ public class RatingService {
         // Rule 2: submitter must be a participant — the broker who posted or the assigned carrier
         boolean isBrokerParticipant = submitter.getBroker() != null
                 && load.getBroker() != null
-                && submitter.getBroker().getId().equals(load.getBroker().getId());
+                && submitter.getBroker().getId().equals(load.getBroker().getId())
+                || submitter.getDealer() != null
+                && load.getDealer() != null
+                && submitter.getDealer().getId().equals(load.getDealer().getId());
         boolean isCarrierParticipant = submitter.getCarrier() != null
                 && load.getAssignedCarrier() != null
                 && submitter.getCarrier().getId().equals(load.getAssignedCarrier().getId());

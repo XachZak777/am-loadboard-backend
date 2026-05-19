@@ -5,5 +5,6 @@ public enum PickupType {
     RESIDENCE,
     AUCTION,
     PORT,
+    DEALER,
     OTHER
 }

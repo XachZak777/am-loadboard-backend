@@ -294,8 +294,10 @@ public class LoadPostingService {
                             load.getVehicle() != null ? load.getVehicle().getYear() : null,
                             load.getPickupAddress() != null ? load.getPickupAddress().getCity() : null,
                             load.getPickupAddress() != null ? load.getPickupAddress().getState() : null,
+                            load.getPickupAddress() != null ? load.getPickupAddress().getZip() : null,
                             load.getDropAddress() != null ? load.getDropAddress().getCity() : null,
                             load.getDropAddress() != null ? load.getDropAddress().getState() : null,
+                            load.getDropAddress() != null ? load.getDropAddress().getZip() : null,
                             load.getPrice(),
                             load.getCreatedAt(),
                             load.getPickupDate(),
@@ -316,9 +318,9 @@ public class LoadPostingService {
         if (p.getPickupAddress() != null) {
             dto.setPickupCity(p.getPickupAddress().getCity());
             dto.setPickupState(p.getPickupAddress().getState());
+            dto.setPickupZip(p.getPickupAddress().getZip());
             if (showFullAddress) {
                 dto.setPickupStreet(p.getPickupAddress().getStreet());
-                dto.setPickupZip(p.getPickupAddress().getZip());
                 dto.setPickupCountry(p.getPickupAddress().getCountry());
                 dto.setPickupLotNumber(p.getPickupAddress().getLotNumber());
                 dto.setPickupContactName(p.getPickupAddress().getContactName());
@@ -328,9 +330,9 @@ public class LoadPostingService {
         if (p.getDropAddress() != null) {
             dto.setDropCity(p.getDropAddress().getCity());
             dto.setDropState(p.getDropAddress().getState());
+            dto.setDropZip(p.getDropAddress().getZip());
             if (showFullAddress) {
                 dto.setDropStreet(p.getDropAddress().getStreet());
-                dto.setDropZip(p.getDropAddress().getZip());
                 dto.setDropCountry(p.getDropAddress().getCountry());
                 dto.setDropLotNumber(p.getDropAddress().getLotNumber());
                 dto.setDropContactName(p.getDropAddress().getContactName());

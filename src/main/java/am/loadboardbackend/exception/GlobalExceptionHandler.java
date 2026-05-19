@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import am.loadboardbackend.dto.ErrorResponse;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.http.converter.HttpMessageNotWritableException;
@@ -34,7 +35,9 @@ public class GlobalExceptionHandler {
                 message,
                 request.getRequestURI()
         );
-        return ResponseEntity.status(ex.getStatusCode()).body(body);
+        return ResponseEntity.status(ex.getStatusCode())
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(body);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -49,7 +52,9 @@ public class GlobalExceptionHandler {
                 message,
                 request.getRequestURI()
         );
-        return ResponseEntity.badRequest().body(body);
+        return ResponseEntity.badRequest()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(body);
     }
 
     @ExceptionHandler(RuntimeException.class)
@@ -66,7 +71,9 @@ public class GlobalExceptionHandler {
                 mapMessage(ex.getMessage()),
                 request.getRequestURI()
         );
-        return ResponseEntity.status(status).body(body);
+        return ResponseEntity.status(status)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(body);
     }
 
     @ExceptionHandler(Exception.class)
@@ -79,7 +86,9 @@ public class GlobalExceptionHandler {
                 "An unexpected error occurred. Please try again later.",
                 request.getRequestURI()
         );
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(body);
     }
 
     @ExceptionHandler({HttpMediaTypeNotAcceptableException.class, HttpMessageNotWritableException.class})
@@ -92,7 +101,9 @@ public class GlobalExceptionHandler {
                 "Response could not be serialized.",
                 request.getRequestURI()
         );
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(body);
     }
 
     @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
@@ -104,7 +115,9 @@ public class GlobalExceptionHandler {
                 "Resource was modified by another process; please retry",
                 request.getRequestURI()
         );
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(body);
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
@@ -122,6 +135,8 @@ public class GlobalExceptionHandler {
             message = "Registration failed: carrier association is missing.";
         } else if (detail.contains("broker_id")) {
             message = "Registration failed: broker association is missing.";
+        } else if (detail.contains("dealer_id")) {
+            message = "Registration failed: dealer association is missing.";
         } else if (detail.contains("mc_number")) {
             message = "An account with this MC number already exists";
         } else if (detail.contains("dot_number")) {

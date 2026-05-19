@@ -4,16 +4,19 @@ import am.loadboardbackend.dto.auth.LoginResponse;
 import am.loadboardbackend.dto.auth.RegisterCarrierRequest;
 import am.loadboardbackend.dto.auth.RegisterAdminRequest;
 import am.loadboardbackend.dto.broker.RegisterBrokerRequest;
+import am.loadboardbackend.dto.dealer.RegisterDealerRequest;
 import am.loadboardbackend.model.Broker;
 import am.loadboardbackend.model.Carrier;
 import am.loadboardbackend.model.CarrierValidation;
 import am.loadboardbackend.model.BrokerValidation;
+import am.loadboardbackend.model.Dealer;
 import am.loadboardbackend.repository.CarrierValidationRepository;
 import am.loadboardbackend.repository.BrokerValidationRepository;
 import am.loadboardbackend.model.User;
 import am.loadboardbackend.model.UserRole;
 import am.loadboardbackend.repository.BrokerRepository;
 import am.loadboardbackend.repository.CarrierRepository;
+import am.loadboardbackend.repository.DealerRepository;
 import am.loadboardbackend.repository.UserRepository;
 import am.loadboardbackend.security.JwtUtil;
 import am.loadboardbackend.service.validation.BrokerValidationResult;
@@ -34,6 +37,7 @@ public class RegistrationService {
     private final UserRepository userRepository;
     private final CarrierRepository carrierRepository;
     private final BrokerRepository brokerRepository;
+    private final DealerRepository dealerRepository;
     private final PasswordEncoder passwordEncoder;
     private final CarrierValidationService carrierValidationService;
     private final BrokerValidationService brokerValidationService;
@@ -420,6 +424,39 @@ public class RegistrationService {
         savedAdmin.getRole() != null ? savedAdmin.getRole().name().replace("ROLE_", "") : null,
         savedAdmin.isAdminApproved()
     );
+    }
+
+    @Transactional
+    public LoginResponse registerDealer(RegisterDealerRequest req) {
+        log.info("RegisterDealer start email={}", req.email());
+        assertEmailNotTaken(req.email());
+
+        Dealer dealer = new Dealer();
+        dealer.setCompanyName(req.companyName());
+        dealer.setOwnerFirstName(req.ownerFirstName());
+        dealer.setOwnerLastName(req.ownerLastName());
+        dealer.setBusinessPhone(req.businessPhone());
+        dealer.setCompanyAddress(req.companyAddress());
+        dealer.setCity(req.city());
+        dealer.setState(req.state());
+        dealer.setZipCode(req.zipCode());
+        dealer.setYearEstablished(req.yearEstablished());
+        dealer.setDealerLicenseNumber(req.dealerLicenseNumber());
+        dealer.setAuctionAccessNumber(req.auctionAccessNumber());
+        dealer.setHowDidYouHear(req.howDidYouHear());
+        dealerRepository.save(dealer);
+
+        User user = new User();
+        user.setEmail(req.email());
+        user.setPasswordHash(passwordEncoder.encode(req.password()));
+        user.setRole(UserRole.ROLE_DEALER);
+        user.setDealer(dealer);
+        user.setEmailVerified(false);
+        user.setAdminApproved(false);
+        userRepository.save(user);
+
+        log.info("RegisterDealer success email={} userId={} dealerId={}", user.getEmail(), user.getId(), dealer.getId());
+        return authService.issueTokenForUser(user);
     }
 
     // ── helpers ───────────────────────────────────────────────────────────────

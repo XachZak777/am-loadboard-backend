@@ -29,20 +29,26 @@ public class CarrierProfileService {
     public void updateProfile(User user, CarrierProfileRequest req) {
         Carrier carrier = resolveCarrier(user);
 
-        // Partial update — only overwrite non-null fields
-        if (req.companyName() != null)        carrier.setCompanyName(req.companyName());
-        if (req.dotNumber() != null)          carrier.setDotNumber(req.dotNumber());
-        if (req.mcNumber() != null)           carrier.setMcNumber(req.mcNumber());
+        boolean postRegistration = user.isAdminApproved();
+
+        // Locked fields — only writable during registration wizard (before admin approval)
+        if (!postRegistration) {
+            if (req.companyName() != null)    carrier.setCompanyName(req.companyName());
+            if (req.dotNumber() != null)      carrier.setDotNumber(req.dotNumber());
+            if (req.mcNumber() != null)       carrier.setMcNumber(req.mcNumber());
+            if (req.mailingAddress() != null) carrier.setMailingAddress(req.mailingAddress());
+            if (req.city() != null)           carrier.setCity(req.city());
+            if (req.state() != null)          carrier.setState(req.state());
+            if (req.zipCode() != null)        carrier.setZipCode(req.zipCode());
+        }
+
+        // Always editable
         if (req.phoneNumber() != null)        carrier.setPhoneNumber(req.phoneNumber());
         if (req.insuranceCompany() != null)   carrier.setInsuranceCompany(req.insuranceCompany());
         if (req.cargoInsurance() != null)     carrier.setCargoInsurance(req.cargoInsurance());
         if (req.liabilityInsurance() != null) carrier.setLiabilityInsurance(req.liabilityInsurance());
         if (req.taxIdType() != null)          carrier.setTaxIdType(req.taxIdType());
         if (req.taxId() != null)              carrier.setTaxId(req.taxId());
-        if (req.mailingAddress() != null)     carrier.setMailingAddress(req.mailingAddress());
-        if (req.city() != null)               carrier.setCity(req.city());
-        if (req.state() != null)              carrier.setState(req.state());
-        if (req.zipCode() != null)            carrier.setZipCode(req.zipCode());
         if (req.preferredLines() != null)     carrier.setPreferredLines(req.preferredLines());
 
         carrierRepository.save(carrier);
@@ -52,8 +58,10 @@ public class CarrierProfileService {
             user.setCarrier(carrier);
         }
 
-        // New/updated profiles require admin approval
-        user.setAdminApproved(false);
+        // Only pending-approval users need re-review after profile changes
+        if (!postRegistration) {
+            user.setAdminApproved(false);
+        }
         userRepository.save(user);
 
         log.info("CarrierProfile updated userId={} carrierId={}", user.getId(), carrier.getId());

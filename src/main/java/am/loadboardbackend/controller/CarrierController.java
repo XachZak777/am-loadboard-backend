@@ -1,5 +1,6 @@
 package am.loadboardbackend.controller;
 
+import am.loadboardbackend.dto.admin.AdminDocumentDto;
 import am.loadboardbackend.dto.carrier.CarrierProfileRequest;
 import am.loadboardbackend.dto.carrier.CarrierPublicDto;
 import am.loadboardbackend.dto.carrier.CarrierResponseDto;
@@ -149,6 +150,35 @@ public class CarrierController {
         DocumentUploadResponse response = documentStorageService.storeMcAuthority(
                 file, user.getCarrier().getId(), "CARRIER");
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * GET /api/carriers/documents — list all documents uploaded by this carrier.
+     */
+    @GetMapping("/documents")
+    public ResponseEntity<List<AdminDocumentDto>> listDocuments(@AuthenticationPrincipal User user) {
+        if (user.getCarrier() == null) return ResponseEntity.ok(List.of());
+        List<AdminDocumentDto> docs = documentStorageService
+                .listDocuments(user.getCarrier().getId(), "CARRIER")
+                .stream()
+                .map(d -> new AdminDocumentDto(d.getId(), d.getDocumentType(), d.getOriginalName(), d.getFileUrl(), d.getUploadedAt()))
+                .toList();
+        return ResponseEntity.ok(docs);
+    }
+
+    /**
+     * DELETE /api/carriers/documents/{documentId} — delete one of this carrier's documents.
+     */
+    @DeleteMapping("/documents/{documentId}")
+    public ResponseEntity<Void> deleteDocument(
+            @AuthenticationPrincipal User user,
+            @PathVariable UUID documentId) {
+        if (user.getCarrier() == null) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST, "No carrier profile found");
+        }
+        documentStorageService.deleteDocument(documentId, user.getCarrier().getId(), "CARRIER");
+        return ResponseEntity.noContent().build();
     }
 
     private static CarrierPublicDto toPublicDto(Carrier c, Integer ratingScore) {

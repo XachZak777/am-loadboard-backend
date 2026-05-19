@@ -32,6 +32,12 @@ public class LoginResponse {
      */
     private boolean adminApproved;
 
+    /**
+     * Company / legal name of the authenticated user's profile.
+     * Null for admin accounts.
+     */
+    private String companyName;
+
     public LoginResponse(String token, String userId, String email, String role) {
         this.token = token;
         this.userId = userId;
@@ -46,5 +52,14 @@ public class LoginResponse {
         this.email = email;
         this.role = role;
         this.adminApproved = adminApproved;
+    }
+
+    public LoginResponse(String token, String userId, String email, String role, boolean adminApproved, String companyName) {
+        this.token = token;
+        this.userId = userId;
+        this.email = email;
+        this.role = role;
+        this.adminApproved = adminApproved;
+        this.companyName = companyName;
     }
 }

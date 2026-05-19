@@ -20,6 +20,7 @@ public class CarrierMapper {
                 carrier.getMcNumber(),
                 carrier.getLegalName(),
                 carrier.getDbaName(),
+                carrier.getCompanyName(),
                 carrier.getOperatingStatus(),
                 carrier.getSafetyRating(),
                 carrier.isVerified(),
@@ -27,6 +28,16 @@ public class CarrierMapper {
                 carrier.getPhyState(),
                 carrier.getTotalDrivers(),
                 carrier.getTotalPowerUnits(),
+                carrier.getPhoneNumber(),
+                carrier.getMailingAddress(),
+                carrier.getCity(),
+                carrier.getState(),
+                carrier.getZipCode(),
+                carrier.getInsuranceCompany(),
+                carrier.getCargoInsurance(),
+                carrier.getLiabilityInsurance(),
+                carrier.getTaxIdType(),
+                carrier.getTaxId(),
                 carrier.getPreferredLines()
         );
     }

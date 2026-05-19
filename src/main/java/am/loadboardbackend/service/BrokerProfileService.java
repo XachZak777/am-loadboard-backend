@@ -29,20 +29,26 @@ public class BrokerProfileService {
     public void updateProfile(User user, BrokerProfileRequest req) {
         Broker broker = resolveBroker(user);
 
-        // Partial update — only overwrite non-null fields
-        if (req.companyName() != null)        broker.setCompanyName(req.companyName());
-        if (req.dotNumber() != null)          broker.setDotNumber(req.dotNumber());
-        if (req.mcNumber() != null)           broker.setMcNumber(req.mcNumber());
+        boolean postRegistration = user.isAdminApproved();
+
+        // Locked fields — only writable during registration wizard (before admin approval)
+        if (!postRegistration) {
+            if (req.companyName() != null)    broker.setCompanyName(req.companyName());
+            if (req.dotNumber() != null)      broker.setDotNumber(req.dotNumber());
+            if (req.mcNumber() != null)       broker.setMcNumber(req.mcNumber());
+            if (req.mailingAddress() != null) broker.setMailingAddress(req.mailingAddress());
+            if (req.city() != null)           broker.setCity(req.city());
+            if (req.state() != null)          broker.setState(req.state());
+            if (req.zipCode() != null)        broker.setZipCode(req.zipCode());
+        }
+
+        // Always editable
         if (req.phoneNumber() != null)        broker.setPhoneNumber(req.phoneNumber());
         if (req.insuranceCompany() != null)   broker.setInsuranceCompany(req.insuranceCompany());
         if (req.cargoInsurance() != null)     broker.setCargoInsurance(req.cargoInsurance());
         if (req.liabilityInsurance() != null) broker.setLiabilityInsurance(req.liabilityInsurance());
         if (req.taxIdType() != null)          broker.setTaxIdType(req.taxIdType());
         if (req.taxId() != null)              broker.setTaxId(req.taxId());
-        if (req.mailingAddress() != null)     broker.setMailingAddress(req.mailingAddress());
-        if (req.city() != null)               broker.setCity(req.city());
-        if (req.state() != null)              broker.setState(req.state());
-        if (req.zipCode() != null)            broker.setZipCode(req.zipCode());
         if (req.bondCompany() != null)         broker.setBondCompany(req.bondCompany());
         if (req.bondPolicyNumber() != null)    broker.setBondPolicyNumber(req.bondPolicyNumber());
         if (req.bondCoverage() != null)        broker.setBondCoverage(req.bondCoverage());
@@ -59,8 +65,10 @@ public class BrokerProfileService {
             user.setBroker(broker);
         }
 
-        // New/updated profiles require admin approval
-        user.setAdminApproved(false);
+        // Only pending-approval users need re-review after profile changes
+        if (!postRegistration) {
+            user.setAdminApproved(false);
+        }
         userRepository.save(user);
 
         log.info("BrokerProfile updated userId={} brokerId={}", user.getId(), broker.getId());

@@ -5,5 +5,6 @@ public enum DropType {
     RESIDENCE,
     AUCTION,
     PORT,
+    DEALER,
     OTHER
 }

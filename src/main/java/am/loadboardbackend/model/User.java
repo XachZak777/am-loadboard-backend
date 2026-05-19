@@ -37,6 +37,7 @@ public class User extends Auditable<String> {
     private Dealer dealer;
 
     @Enumerated(EnumType.STRING)
+    @Column(columnDefinition = "VARCHAR(50)")
     private UserRole role;
 
     @Column(unique = true, nullable = false)

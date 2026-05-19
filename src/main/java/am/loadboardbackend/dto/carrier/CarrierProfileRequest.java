@@ -8,6 +8,7 @@ import java.math.BigDecimal;
  */
 public record CarrierProfileRequest(
         String companyName,
+        String dbaName,
         String dotNumber,
         String mcNumber,
         String phoneNumber,

@@ -38,6 +38,28 @@ public record AdminUserDto(
         String  taxIdType,
         String  taxId,
 
+        // ── Carrier-only fields ──────────────────────────────────────────
+        String  dbaName,
+        String  preferredLines,
+
+        // ── Bond fields (broker only) ────────────────────────────────────
+        String  bondCompany,
+        String  bondPolicyNumber,
+        String  bondCoverage,
+        String  bondEffectiveDate,
+        String  bondAgentFirstName,
+        String  bondAgentLastName,
+        String  bondAgentEmail,
+        String  bondAgentPhone,
+
+        // ── Dealer-only fields ───────────────────────────────────────────
+        String  ownerFirstName,
+        String  ownerLastName,
+        String  yearEstablished,
+        String  dealerLicenseNumber,
+        String  auctionAccessNumber,
+        String  howDidYouHear,
+
         // ── Uploaded documents (W9 etc.) ─────────────────────────────────
         List<AdminDocumentDto> documents
 ) {}

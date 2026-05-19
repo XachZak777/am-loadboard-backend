@@ -9,6 +9,7 @@ import am.loadboardbackend.model.LoadPosting;
 import am.loadboardbackend.model.User;
 import am.loadboardbackend.service.AdminService;
 import am.loadboardbackend.service.AdminUserService;
+import am.loadboardbackend.service.DocumentStorageService;
 import am.loadboardbackend.service.UserApprovalService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,9 +29,10 @@ import java.util.UUID;
 @PreAuthorize("hasRole('ADMIN')")
 public class AdminController {
 
-    private final AdminService       adminService;
-    private final AdminUserService   adminUserService;
-    private final UserApprovalService userApprovalService;
+    private final AdminService          adminService;
+    private final AdminUserService      adminUserService;
+    private final UserApprovalService   userApprovalService;
+    private final DocumentStorageService documentStorageService;
 
     // ── Unified user list ────────────────────────────────────────────────────
 
@@ -157,6 +159,75 @@ public class AdminController {
     public ResponseEntity<Map<String, String>> revokeBroker(@PathVariable UUID id) {
         userApprovalService.revokeByBrokerId(id);
         return ResponseEntity.ok(Map.of("message", "Broker approval revoked"));
+    }
+
+    // ── Admin profile update ──────────────────────────────────────────────────
+
+    @PatchMapping("/carriers/{carrierId}/profile")
+    public ResponseEntity<Map<String, String>> updateCarrierProfile(
+            @PathVariable UUID carrierId,
+            @RequestBody am.loadboardbackend.dto.carrier.CarrierProfileRequest req) {
+        adminUserService.updateCarrierProfile(carrierId, req);
+        return ResponseEntity.ok(Map.of("message", "Carrier profile updated"));
+    }
+
+    @PatchMapping("/brokers/{brokerId}/profile")
+    public ResponseEntity<Map<String, String>> updateBrokerProfile(
+            @PathVariable UUID brokerId,
+            @RequestBody am.loadboardbackend.dto.broker.BrokerProfileRequest req) {
+        adminUserService.updateBrokerProfile(brokerId, req);
+        return ResponseEntity.ok(Map.of("message", "Broker profile updated"));
+    }
+
+    // ── Admin document upload ──────────────────────────────────────────────────
+
+    @PostMapping(value = "/carriers/{carrierId}/documents/w9", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<am.loadboardbackend.dto.document.DocumentUploadResponse> uploadCarrierW9(
+            @PathVariable UUID carrierId,
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+        return ResponseEntity.ok(documentStorageService.storeW9(file, carrierId, "CARRIER"));
+    }
+
+    @PostMapping(value = "/carriers/{carrierId}/documents/insurance", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<am.loadboardbackend.dto.document.DocumentUploadResponse> uploadCarrierInsurance(
+            @PathVariable UUID carrierId,
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+        return ResponseEntity.ok(documentStorageService.storeInsurance(file, carrierId, "CARRIER"));
+    }
+
+    @PostMapping(value = "/carriers/{carrierId}/documents/mc-authority", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<am.loadboardbackend.dto.document.DocumentUploadResponse> uploadCarrierMcAuthority(
+            @PathVariable UUID carrierId,
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+        return ResponseEntity.ok(documentStorageService.storeMcAuthority(file, carrierId, "CARRIER"));
+    }
+
+    @PostMapping(value = "/brokers/{brokerId}/documents/w9", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<am.loadboardbackend.dto.document.DocumentUploadResponse> uploadBrokerW9(
+            @PathVariable UUID brokerId,
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+        return ResponseEntity.ok(documentStorageService.storeW9(file, brokerId, "BROKER"));
+    }
+
+    @PostMapping(value = "/brokers/{brokerId}/documents/mc-authority", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<am.loadboardbackend.dto.document.DocumentUploadResponse> uploadBrokerMcAuthority(
+            @PathVariable UUID brokerId,
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+        return ResponseEntity.ok(documentStorageService.storeMcAuthority(file, brokerId, "BROKER"));
+    }
+
+    @PostMapping(value = "/dealers/{dealerId}/documents/dealer-license", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<am.loadboardbackend.dto.document.DocumentUploadResponse> uploadDealerLicense(
+            @PathVariable UUID dealerId,
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+        return ResponseEntity.ok(documentStorageService.storeDealerDocument(file, dealerId, "DEALER", "DEALER_LICENSE"));
+    }
+
+    @PostMapping(value = "/dealers/{dealerId}/documents/corporate-paperwork", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<am.loadboardbackend.dto.document.DocumentUploadResponse> uploadDealerCorporatePaperwork(
+            @PathVariable UUID dealerId,
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+        return ResponseEntity.ok(documentStorageService.storeDealerDocument(file, dealerId, "DEALER", "CORPORATE_PAPERWORK"));
     }
 
     // ── Legacy user-level approval (by user id) ──────────────────────────────

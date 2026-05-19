@@ -20,7 +20,7 @@ public class AppProperties {
     @Setter
     public static class Mail {
         private String from;
-        private String fromName = "LoadBoard";
+        private String fromName = "Haulius";
     }
 
     @Getter
