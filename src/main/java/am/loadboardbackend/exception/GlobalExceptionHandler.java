@@ -127,8 +127,10 @@ public class GlobalExceptionHandler {
         String message = "Data integrity violation";
         if (detail.contains("loads_status_check")) {
             message = "Load status update is not allowed by the current schema — run the V2 migration.";
-        } else if (detail.contains("email")) {
+        } else if ((detail.contains("Key (email)") || detail.contains("users_email")) && !detail.contains("contact_email")) {
             message = "Email address is already in use";
+        } else if (detail.contains("contact_email")) {
+            message = "Contact email is already associated with another load. Please use a different contact email.";
         } else if (detail.contains("carrier_id") && detail.contains("relation \"loads\"")) {
             message = "Load posting failed: database schema is out of date.";
         } else if (detail.contains("carrier_id")) {
