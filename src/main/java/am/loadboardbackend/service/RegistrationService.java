@@ -1,17 +1,11 @@
 package am.loadboardbackend.service;
 
 import am.loadboardbackend.dto.auth.LoginResponse;
-import am.loadboardbackend.dto.auth.RegisterCarrierRequest;
 import am.loadboardbackend.dto.auth.RegisterAdminRequest;
-import am.loadboardbackend.dto.broker.RegisterBrokerRequest;
 import am.loadboardbackend.dto.dealer.RegisterDealerRequest;
 import am.loadboardbackend.model.Broker;
 import am.loadboardbackend.model.Carrier;
-import am.loadboardbackend.model.CarrierValidation;
-import am.loadboardbackend.model.BrokerValidation;
 import am.loadboardbackend.model.Dealer;
-import am.loadboardbackend.repository.CarrierValidationRepository;
-import am.loadboardbackend.repository.BrokerValidationRepository;
 import am.loadboardbackend.model.User;
 import am.loadboardbackend.model.UserRole;
 import am.loadboardbackend.repository.BrokerRepository;
@@ -19,8 +13,6 @@ import am.loadboardbackend.repository.CarrierRepository;
 import am.loadboardbackend.repository.DealerRepository;
 import am.loadboardbackend.repository.UserRepository;
 import am.loadboardbackend.security.JwtUtil;
-import am.loadboardbackend.service.validation.BrokerValidationResult;
-import am.loadboardbackend.service.validation.CarrierValidationResult;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,230 +31,8 @@ public class RegistrationService {
     private final BrokerRepository brokerRepository;
     private final DealerRepository dealerRepository;
     private final PasswordEncoder passwordEncoder;
-    private final CarrierValidationService carrierValidationService;
-    private final BrokerValidationService brokerValidationService;
-    private final CarrierValidationRepository carrierValidationRepo;
-    private final BrokerValidationRepository brokerValidationRepo;
-    private final TemporaryValidationStore tempStore;
     private final JwtUtil jwtUtil;
     private final AuthService authService;
-
-    @Transactional
-    public LoginResponse registerCarrier(RegisterCarrierRequest req) {
-        log.info("RegisterCarrier start lookupValue={} lookupType={} email={}", req.lookupValue(), req.lookupType(), req.email());
-        assertEmailNotTaken(req.email());
-
-        CarrierValidationResult validation =
-                carrierValidationService.validate(req.lookupValue(), req.lookupType());
-
-        // Guard: ensure this DOT/MC is not already registered as a Broker
-        assertDotAndMcNotUsedByBroker(validation.getDotNumber(), validation.getMcNumber());
-
-        Carrier carrier = new Carrier();
-        carrier.setDotNumber(validation.getDotNumber());
-        carrier.setMcNumber(validation.getMcNumber());
-        carrier.setLegalName(validation.getLegalName());
-        carrier.setDbaName(validation.getDbaName());
-        carrier.setOperatingStatus(validation.getOperatingStatus());
-        carrier.setVerified(
-                "Y".equalsIgnoreCase(validation.getAllowedToOperate())
-        );
-        carrier.setPhyStreet(validation.getPhyStreet());
-        carrier.setPhyCity(validation.getPhyCity());
-        carrier.setPhyState(validation.getPhyState());
-        carrier.setPhyZip(validation.getPhyZip());
-        carrier.setPhyCountry(validation.getPhyCountry());
-        carrier.setTotalDrivers(validation.getTotalDrivers());
-        carrier.setTotalPowerUnits(validation.getTotalPowerUnits());
-
-        removeOrphanedCarrier(carrier.getDotNumber(), carrier.getMcNumber());
-    carrierRepository.save(carrier);
-    log.info("Carrier entity persisted id={} mc={} dot={}", carrier.getId(), carrier.getMcNumber(), carrier.getDotNumber());
-
-        User user = new User();
-        user.setEmail(req.email());
-        user.setPasswordHash(passwordEncoder.encode(req.password()));
-        user.setRole(UserRole.ROLE_CARRIER);
-        user.setCarrier(carrier);
-    user.setEmailVerified(false);
-        user.setAdminApproved(false);
-
-        userRepository.save(user);
-        log.info("RegisterCarrier success email={} userId={} carrierId={}", user.getEmail(), user.getId(), carrier.getId());
-
-    return new LoginResponse(
-        jwtUtil.generateToken(user),
-        user.getId().toString(),
-        user.getEmail(),
-        user.getRole() != null ? user.getRole().name().replace("ROLE_", "") : null,
-        user.isAdminApproved()
-    );
-    }
-
-    @Transactional
-    public LoginResponse registerCarrierFromValidation(java.util.UUID validationId, String email, String password) {
-        log.info("RegisterCarrierFromValidation start validationId={} email={}", validationId, email);
-        assertEmailNotTaken(email);
-            boolean usedCache = true;
-            var cached = tempStore.getValidation(validationId);
-
-            Carrier carrier = new Carrier();
-            if (cached != null) {
-                log.info("Registering carrier from cache id={}", validationId);
-                carrier.setDotNumber(cached.dotNumber);
-                carrier.setMcNumber(cached.mcNumber);
-                carrier.setLegalName(cached.legalName);
-                carrier.setDbaName(cached.dbaName);
-                carrier.setOperatingStatus(cached.operatingStatus);
-                carrier.setVerified("Y".equalsIgnoreCase(cached.allowedToOperate));
-                carrier.setPhyStreet(cached.phyStreet);
-                carrier.setPhyCity(cached.phyCity);
-                carrier.setPhyState(cached.phyState);
-                carrier.setPhyZip(cached.phyZip);
-                carrier.setPhyCountry(cached.phyCountry);
-                carrier.setTotalDrivers(cached.totalDrivers);
-                carrier.setTotalPowerUnits(cached.totalPowerUnits);
-            } else {
-                usedCache = false;
-                log.info("Cache miss for carrier validation id={}; falling back to DB", validationId);
-                CarrierValidation cv = carrierValidationRepo.findById(validationId).orElseThrow();
-                carrier.setDotNumber(cv.getDotNumber());
-                carrier.setMcNumber(cv.getMcNumber());
-                carrier.setLegalName(cv.getLegalName());
-                carrier.setDbaName(cv.getDbaName());
-                carrier.setOperatingStatus(cv.getOperatingStatus());
-                carrier.setVerified("Y".equalsIgnoreCase(cv.getAllowedToOperate()));
-                carrier.setPhyStreet(cv.getPhyStreet());
-                carrier.setPhyCity(cv.getPhyCity());
-                carrier.setPhyState(cv.getPhyState());
-                carrier.setPhyZip(cv.getPhyZip());
-                carrier.setPhyCountry(cv.getPhyCountry());
-                carrier.setTotalDrivers(cv.getTotalDrivers());
-                carrier.setTotalPowerUnits(cv.getTotalPowerUnits());
-            }
-
-            removeOrphanedCarrier(carrier.getDotNumber(), carrier.getMcNumber());
-            // Guard: ensure this DOT/MC is not already registered as a Broker
-            assertDotAndMcNotUsedByBroker(carrier.getDotNumber(), carrier.getMcNumber());
-            carrierRepository.save(carrier);
-
-            User user = new User();
-            user.setEmail(email);
-            user.setPasswordHash(passwordEncoder.encode(password));
-            user.setRole(UserRole.ROLE_CARRIER);
-            user.setCarrier(carrier);
-            user.setEmailVerified(false);
-            user.setAdminApproved(false);
-
-        userRepository.save(user);
-        log.info("RegisterCarrierFromValidation success validationId={} email={} userId={} carrierId={} cacheEvicted={}", validationId, user.getEmail(), user.getId(), carrier.getId(), usedCache);
-
-    return new LoginResponse(
-        jwtUtil.generateToken(user),
-        user.getId().toString(),
-        user.getEmail(),
-        user.getRole() != null ? user.getRole().name().replace("ROLE_", "") : null,
-        user.isAdminApproved()
-    );
-    }
-
-    @Transactional
-    public LoginResponse registerBrokerFromValidation(java.util.UUID validationId, String email, String password) {
-        log.info("RegisterBrokerFromValidation start validationId={} email={}", validationId, email);
-        assertEmailNotTaken(email);
-
-        var cached = tempStore.getValidation(validationId);
-        Broker broker = new Broker();
-        if (cached != null) {
-            String mc = cached.mcNumber;
-            if (mc == null) {
-                mc = tempStore.getBrokerMcNumber(validationId);
-                log.info("Cached result had null mcNumber, using entry mcNumber from tempStore: {}", mc);
-            }
-            broker.setMcNumber(mc);
-            broker.setDotNumber(cached.dotNumber);
-            broker.setLegalName(cached.legalName);
-            broker.setOperatingStatus(cached.operatingStatus);
-            broker.setBrokerAuthorityActive(Boolean.TRUE.equals(cached.brokerAuthorityActive));
-        } else {
-            BrokerValidation bv = brokerValidationRepo.findById(validationId).orElseThrow();
-            broker.setMcNumber(bv.getMcNumber());
-            broker.setDotNumber(bv.getDotNumber());
-            broker.setLegalName(bv.getLegalName());
-            broker.setOperatingStatus(bv.getOperatingStatus());
-            broker.setBrokerAuthorityActive(bv.isBrokerAuthorityActive());
-        }
-        if (broker.getMcNumber() == null) {
-            log.error("Failed to register broker: mcNumber is null for validationId={}", validationId);
-            throw new RuntimeException("Broker mcNumber missing from validation result; cannot persist");
-        }
-
-        removeOrphanedBroker(broker.getMcNumber());
-        // Guard: ensure this MC/DOT is not already registered as a Carrier
-        assertMcAndDotNotUsedByCarrier(broker.getDotNumber(), broker.getMcNumber());
-        brokerRepository.save(broker);
-        log.info("Broker persisted from validation validationId={} brokerId={}", validationId, broker.getId());
-
-    tempStore.removeValidation(validationId);
-
-        User user = new User();
-        user.setEmail(email);
-        user.setPasswordHash(passwordEncoder.encode(password));
-        user.setRole(UserRole.ROLE_BROKER);
-        user.setBroker(broker);
-    user.setEmailVerified(false);
-        user.setAdminApproved(false);
-
-        userRepository.save(user);
-        log.info("RegisterBrokerFromValidation success validationId={} email={} userId={} brokerId={}", validationId, user.getEmail(), user.getId(), broker.getId());
-
-    return new LoginResponse(
-        jwtUtil.generateToken(user),
-        user.getId().toString(),
-        user.getEmail(),
-        user.getRole() != null ? user.getRole().name().replace("ROLE_", "") : null,
-        user.isAdminApproved()
-    );
-    }
-
-    @Transactional
-    public LoginResponse registerBroker(RegisterBrokerRequest req) {
-        log.info("RegisterBroker start mcNumber={} email={}", req.mcNumber(), req.email());
-        assertEmailNotTaken(req.email());
-
-        BrokerValidationResult validation = brokerValidationService.validate(req.mcNumber());
-
-        Broker broker = new Broker();
-        broker.setMcNumber(validation.getMcNumber());
-        broker.setDotNumber(validation.getDotNumber());
-        broker.setLegalName(validation.getLegalName());
-        broker.setOperatingStatus(validation.getOperatingStatus());
-        broker.setBrokerAuthorityActive(validation.isBrokerAuthorityActive());
-
-        removeOrphanedBroker(broker.getMcNumber());
-        // Guard: ensure this MC/DOT is not already registered as a Carrier
-        assertMcAndDotNotUsedByCarrier(broker.getDotNumber(), broker.getMcNumber());
-        brokerRepository.save(broker);
-
-        User user = new User();
-        user.setEmail(req.email());
-        user.setPasswordHash(passwordEncoder.encode(req.password()));
-        user.setRole(UserRole.ROLE_BROKER);
-        user.setBroker(broker);
-        user.setEmailVerified(false);
-        user.setAdminApproved(false);
-
-        userRepository.save(user);
-        log.info("RegisterBroker success email={} userId={} brokerId={}", user.getEmail(), user.getId(), broker.getId());
-
-        return new LoginResponse(
-                jwtUtil.generateToken(user),
-                user.getId().toString(),
-                user.getEmail(),
-                user.getRole() != null ? user.getRole().name().replace("ROLE_", "") : null,
-                user.isAdminApproved()
-        );
-    }
 
     @Transactional
     public LoginResponse registerCarrierWithPreview(am.loadboardbackend.dto.auth.RegisterCarrierFromPreviewRequest req) {

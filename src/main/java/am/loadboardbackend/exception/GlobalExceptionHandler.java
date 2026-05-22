@@ -167,11 +167,9 @@ public class GlobalExceptionHandler {
     private HttpStatus mapStatus(String code) {
         if (code == null) return HttpStatus.INTERNAL_SERVER_ERROR;
         return switch (code) {
-            case "CARRIER_NOT_FOUND" -> HttpStatus.NOT_FOUND;
             case "CARRIER_NOT_ALLOWED" -> HttpStatus.FORBIDDEN;
             case "CARRIER_ALREADY_REGISTERED", "EMAIL_ALREADY_EXISTS" -> HttpStatus.CONFLICT;
             case "INVALID_CREDENTIALS" -> HttpStatus.UNAUTHORIZED;
-            case "FMCSA_SERVICE_UNAVAILABLE" -> HttpStatus.SERVICE_UNAVAILABLE;
             default -> HttpStatus.BAD_REQUEST;
         };
     }
@@ -179,12 +177,10 @@ public class GlobalExceptionHandler {
     private String mapMessage(String code) {
         if (code == null) return "Unexpected error";
         return switch (code) {
-            case "CARRIER_NOT_FOUND" -> "Carrier was not found in the FMCSA database";
             case "CARRIER_NOT_ALLOWED" -> "Carrier is not allowed to operate";
             case "CARRIER_ALREADY_REGISTERED" -> "Carrier is already registered";
             case "EMAIL_ALREADY_EXISTS" -> "Email address is already in use";
             case "INVALID_CREDENTIALS" -> "Invalid email or password";
-            case "FMCSA_SERVICE_UNAVAILABLE" -> "FMCSA service is temporarily unavailable";
             default -> "Request could not be processed";
         };
     }
