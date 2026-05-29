@@ -19,6 +19,9 @@ public class CaptchaService {
     private static final String VERIFY_URL = "https://www.google.com/recaptcha/api/siteverify";
 
     public void verify(String token) {
+        if (secretKey == null || secretKey.isBlank()) {
+            return;
+        }
         if (token == null || token.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "CAPTCHA verification is required");
         }
