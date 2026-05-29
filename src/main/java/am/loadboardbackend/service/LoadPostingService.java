@@ -10,6 +10,7 @@ import am.loadboardbackend.dto.load.LoadPostingDto;
 import am.loadboardbackend.dto.load.UpdateBidRequest;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
+import am.loadboardbackend.mailing.AssignmentRejectedBrokerEmailContext;
 import am.loadboardbackend.mailing.BidApprovedEmailContext;
 import am.loadboardbackend.mailing.BidPlacedEmailContext;
 import am.loadboardbackend.mailing.BidRejectedEmailContext;
@@ -25,9 +26,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -119,6 +122,7 @@ public class LoadPostingService {
         vehicle.setAdditionalInfo(req.getVehicleAdditionalInfo());
         load.setVehicle(vehicle);
         load.setDescription(req.getDescription());
+        load.setPaymentNotes(req.getPaymentNotes());
         load.setWeight(req.getWeight());
         load.setPrice(req.getPrice());
         load.setDistance(distanceCalculator.calculateDistance(
@@ -196,6 +200,7 @@ public class LoadPostingService {
         v2.setAdditionalInfo(req.getVehicleAdditionalInfo());
         load.setVehicle(v2);
         load.setDescription(req.getDescription());
+        load.setPaymentNotes(req.getPaymentNotes());
         load.setWeight(req.getWeight());
         load.setPrice(req.getPrice());
         load.setDistance(distanceCalculator.calculateDistance(
@@ -274,7 +279,9 @@ public class LoadPostingService {
         if (current.getCarrier() == null) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only carriers can access their bids");
         }
-        return bidRepo.findAllByCarrierId(current.getCarrier().getId()).stream()
+        UUID carrierId = current.getCarrier().getId();
+
+        List<CarrierBidWithLoadDto> fromBids = bidRepo.findAllByCarrierId(carrierId).stream()
                 .map(bid -> {
                     LoadPosting load = bid.getLoad();
                     return new CarrierBidWithLoadDto(
@@ -303,10 +310,56 @@ public class LoadPostingService {
                             load.getPickupDate(),
                             load.getDeliveryDate(),
                             load.getStatus() != null ? load.getStatus().name() : null,
-                            load.getBroker() != null ? load.getBroker().getId() : null
+                            load.getBroker() != null ? load.getBroker().getId() : null,
+                            load.getOrderId(),
+                            bid.getNotes(),
+                            deserializeAdditionalVehicles(load.getAdditionalVehicles())
                     );
                 })
                 .collect(Collectors.toList());
+
+        // Include loads directly assigned to this carrier (no bid record created for them)
+        Set<UUID> bidLoadIds = fromBids.stream().map(CarrierBidWithLoadDto::loadId).collect(Collectors.toSet());
+        List<LoadPosting.LoadStatus> activeStatuses = List.of(
+                LoadPosting.LoadStatus.ASSIGNED, LoadPosting.LoadStatus.PICKED_UP,
+                LoadPosting.LoadStatus.DELIVERED, LoadPosting.LoadStatus.PAID);
+        List<CarrierBidWithLoadDto> directAssigned = loadRepo
+                .findByAssignedCarrierIdAndStatusIn(carrierId, activeStatuses).stream()
+                .filter(load -> !bidLoadIds.contains(load.getId()))
+                .map(load -> new CarrierBidWithLoadDto(
+                        null,
+                        load.getId(),
+                        null,
+                        false,
+                        "APPROVED",
+                        load.getCreatedAt(),
+                        null,
+                        null, null, null, null,
+                        load.getVehicle() != null ? load.getVehicle().getMake() : null,
+                        load.getVehicle() != null ? load.getVehicle().getModel() : null,
+                        load.getVehicle() != null ? load.getVehicle().getYear() : null,
+                        load.getPickupAddress() != null ? load.getPickupAddress().getCity() : null,
+                        load.getPickupAddress() != null ? load.getPickupAddress().getState() : null,
+                        load.getPickupAddress() != null ? load.getPickupAddress().getZip() : null,
+                        load.getDropAddress() != null ? load.getDropAddress().getCity() : null,
+                        load.getDropAddress() != null ? load.getDropAddress().getState() : null,
+                        load.getDropAddress() != null ? load.getDropAddress().getZip() : null,
+                        load.getPrice(),
+                        load.getCreatedAt(),
+                        load.getPickupDate(),
+                        load.getDeliveryDate(),
+                        load.getStatus() != null ? load.getStatus().name() : null,
+                        load.getBroker() != null ? load.getBroker().getId() :
+                                (load.getDealer() != null ? load.getDealer().getId() : null),
+                        load.getOrderId(),
+                        null,
+                        deserializeAdditionalVehicles(load.getAdditionalVehicles())
+                ))
+                .collect(Collectors.toList());
+
+        List<CarrierBidWithLoadDto> combined = new ArrayList<>(fromBids);
+        combined.addAll(directAssigned);
+        return combined;
     }
 
     private LoadPostingDto toDto(LoadPosting p) {
@@ -349,6 +402,7 @@ public class LoadPostingService {
             if (showFullAddress) dto.setVin(p.getVehicle().getVin());
         }
         dto.setDescription(p.getDescription());
+        dto.setPaymentNotes(p.getPaymentNotes());
         dto.setWeight(p.getWeight());
         dto.setPrice(p.getPrice());
         dto.setDistance(p.getDistance());
@@ -435,6 +489,7 @@ public class LoadPostingService {
         bid.setRequestedPickupTime(req.requestedPickupTime());
         bid.setRequestedDropDate(req.requestedDropDate());
         bid.setRequestedDropTime(req.requestedDropTime());
+        bid.setNotes(req.notes());
         bid.setStatus(BidStatus.PENDING);
 
         Bid saved = bidRepo.save(bid);
@@ -463,6 +518,7 @@ public class LoadPostingService {
         bid.setRequestedPickupTime(req.requestedPickupTime());
         bid.setRequestedDropDate(req.requestedDropDate());
         bid.setRequestedDropTime(req.requestedDropTime());
+        if (req.notes() != null) bid.setNotes(req.notes());
         return toBidResponse(bidRepo.save(bid));
     }
 
@@ -565,6 +621,37 @@ public class LoadPostingService {
     }
 
     @Transactional
+    public void carrierRejectAssignment(UUID loadId) {
+        User current = authService.currentUserOrThrow();
+        if (current.getCarrier() == null) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only carriers can reject assignments");
+        }
+        LoadPosting load = loadRepo.findById(loadId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Load not found"));
+        if (load.getStatus() != LoadPosting.LoadStatus.ASSIGNED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Load is not in ASSIGNED status");
+        }
+        if (load.getAssignedCarrier() == null ||
+                !load.getAssignedCarrier().getId().equals(current.getCarrier().getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "This load is not assigned to you");
+        }
+
+        bidRepo.findAllByLoadId(loadId).stream()
+                .filter(b -> b.getStatus() == BidStatus.APPROVED || b.getStatus() == BidStatus.CANCELLED)
+                .forEach(b -> {
+                    b.setStatus(BidStatus.REJECTED);
+                    bidRepo.save(b);
+                });
+
+        Carrier rejectingCarrier = load.getAssignedCarrier();
+        load.setAssignedCarrier(null);
+        load.setStatus(LoadPosting.LoadStatus.OPEN);
+        loadRepo.save(load);
+        log.info("Carrier {} rejected assignment on load {}", current.getCarrier().getId(), loadId);
+        notifyBrokerOfCarrierRejection(rejectingCarrier, load);
+    }
+
+    @Transactional
     public void cancelBooking(UUID loadId) {
         User current = authService.currentUserOrThrow();
         if (current.getBroker() == null && current.getDealer() == null) {
@@ -585,13 +672,35 @@ public class LoadPostingService {
         loadRepo.save(load);
     }
 
+    @Transactional
+    public void rejectBid(UUID loadId, UUID bidId) {
+        User current = authService.currentUserOrThrow();
+        if (current.getBroker() == null) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only brokers can reject bids");
+        }
+        LoadPosting load = loadRepo.findById(loadId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Load not found"));
+        if (!load.getBroker().getId().equals(current.getBroker().getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not your load");
+        }
+        Bid bid = bidRepo.findById(bidId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Bid not found"));
+        if (bid.getStatus() != BidStatus.PENDING) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Only pending bids can be rejected");
+        }
+        bid.setStatus(BidStatus.REJECTED);
+        bidRepo.save(bid);
+        notifyCarrierOfRejection(bid, load);
+    }
+
     private BidResponse toBidResponse(Bid b) {
         return new BidResponse(
                 b.getId(), b.getLoad().getId(), b.getCarrier().getId(),
                 b.getAmount(), b.isBookNow(), b.getStatus().name(),
                 b.getCreatedAt(), b.getUpdatedAt(),
                 b.getRequestedPickupDate(), b.getRequestedPickupTime(),
-                b.getRequestedDropDate(), b.getRequestedDropTime()
+                b.getRequestedDropDate(), b.getRequestedDropTime(),
+                b.getNotes()
         );
     }
 
@@ -661,6 +770,27 @@ public class LoadPostingService {
             emailService.sendEmail(ctx);
         } catch (Exception e) {
             log.error("Failed to send status update email for loadId={}: {}", load.getId(), e.getMessage(), e);
+        }
+    }
+
+    private void notifyBrokerOfCarrierRejection(Carrier carrier, LoadPosting load) {
+        try {
+            String brokerEmail = null;
+            String brokerName  = null;
+            if (load.getBroker() != null) {
+                brokerEmail = userRepository.findByBrokerId(load.getBroker().getId()).map(User::getEmail).orElse(null);
+                brokerName  = load.getBroker().getCompanyName() != null ? load.getBroker().getCompanyName() : load.getBroker().getLegalName();
+            } else if (load.getDealer() != null) {
+                brokerEmail = userRepository.findByDealerId(load.getDealer().getId()).map(User::getEmail).orElse(null);
+                brokerName  = load.getDealer().getCompanyName();
+            }
+            if (brokerEmail == null || carrier == null) return;
+
+            AssignmentRejectedBrokerEmailContext ctx = new AssignmentRejectedBrokerEmailContext();
+            ctx.init(brokerEmail, brokerName, carrier, load, appProperties.getMail().getFrom(), appProperties.getFrontend().getBaseUrl());
+            emailService.sendEmail(ctx);
+        } catch (Exception e) {
+            log.error("Failed to send assignment rejection email to broker for loadId={}: {}", load.getId(), e.getMessage(), e);
         }
     }
 

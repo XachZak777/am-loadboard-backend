@@ -144,6 +144,50 @@ public class UserApprovalService {
         return userRepository.save(user);
     }
 
+    /** Approve the user whose dealer.id == dealerId. */
+    @Transactional
+    public User approveByDealerId(UUID dealerId) {
+        User user = userRepository.findByDealerId(dealerId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "User with dealer id " + dealerId + " not found"));
+        user.setAdminApproved(true);
+        user.setAdminApprovedAt(LocalDateTime.now());
+        user.setDeclined(false);
+        user.setDeclinedAt(null);
+        User saved = userRepository.save(user);
+        sendApprovalEmail(saved);
+        return saved;
+    }
+
+    /** Decline the user whose dealer.id == dealerId. */
+    @Transactional
+    public User declineByDealerId(UUID dealerId) {
+        User user = userRepository.findByDealerId(dealerId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "User with dealer id " + dealerId + " not found"));
+        user.setAdminApproved(false);
+        user.setAdminApprovedAt(null);
+        user.setDeclined(true);
+        user.setDeclinedAt(LocalDateTime.now());
+        User saved = userRepository.save(user);
+        sendDeclinedEmail(saved);
+        return saved;
+    }
+
+    /** Revoke approval for the dealer's user — moves them back to Pending. */
+    @Transactional
+    public User revokeByDealerId(UUID dealerId) {
+        User user = userRepository.findByDealerId(dealerId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "User with dealer id " + dealerId + " not found"));
+        user.setAdminApproved(false);
+        user.setAdminApprovedAt(null);
+        user.setDeclined(false);
+        user.setDeclinedAt(null);
+        log.info("Revoked approval for dealerId={} userId={}", dealerId, user.getId());
+        return userRepository.save(user);
+    }
+
     // ── email helpers ─────────────────────────────────────────────────────────
 
     private void sendApprovalEmail(User user) {

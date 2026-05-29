@@ -79,6 +79,9 @@ public class LoadPosting {
     private VehicleInfo vehicle;
 
     private String description;
+
+    @Column(name = "payment_notes")
+    private String paymentNotes;
     private Double weight;
     private Double price;
     private Double distance;

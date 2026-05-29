@@ -34,8 +34,6 @@ public class AdminController {
     private final UserApprovalService   userApprovalService;
     private final DocumentStorageService documentStorageService;
 
-    // ── Unified user list ────────────────────────────────────────────────────
-
     /**
      * GET /api/admin/users
      * Returns all carriers and brokers with their profile fields and uploaded documents.
@@ -83,8 +81,6 @@ public class AdminController {
         return ResponseEntity.noContent().build();
     }
 
-    // ── Carrier endpoints ────────────────────────────────────────────────────
-
     @GetMapping("/carriers")
     public ResponseEntity<List<Carrier>> getAllCarriers() {
         return ResponseEntity.ok(adminService.getAllCarriers());
@@ -121,8 +117,6 @@ public class AdminController {
         userApprovalService.revokeByCarrierId(id);
         return ResponseEntity.ok(Map.of("message", "Carrier approval revoked"));
     }
-
-    // ── Broker endpoints ─────────────────────────────────────────────────────
 
     @GetMapping("/brokers")
     public ResponseEntity<List<Broker>> getAllBrokers() {
@@ -161,8 +155,6 @@ public class AdminController {
         return ResponseEntity.ok(Map.of("message", "Broker approval revoked"));
     }
 
-    // ── Admin profile update ──────────────────────────────────────────────────
-
     @PatchMapping("/carriers/{carrierId}/profile")
     public ResponseEntity<Map<String, String>> updateCarrierProfile(
             @PathVariable UUID carrierId,
@@ -178,8 +170,6 @@ public class AdminController {
         adminUserService.updateBrokerProfile(brokerId, req);
         return ResponseEntity.ok(Map.of("message", "Broker profile updated"));
     }
-
-    // ── Admin document upload ──────────────────────────────────────────────────
 
     @PostMapping(value = "/carriers/{carrierId}/documents/w9", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<am.loadboardbackend.dto.document.DocumentUploadResponse> uploadCarrierW9(
@@ -216,6 +206,24 @@ public class AdminController {
         return ResponseEntity.ok(documentStorageService.storeMcAuthority(file, brokerId, "BROKER"));
     }
 
+    @PostMapping("/dealers/{id}/approve")
+    public ResponseEntity<Map<String, String>> approveDealer(@PathVariable UUID id) {
+        userApprovalService.approveByDealerId(id);
+        return ResponseEntity.ok(Map.of("message", "Dealer approved"));
+    }
+
+    @PostMapping("/dealers/{id}/decline")
+    public ResponseEntity<Map<String, String>> declineDealer(@PathVariable UUID id) {
+        userApprovalService.declineByDealerId(id);
+        return ResponseEntity.ok(Map.of("message", "Dealer declined"));
+    }
+
+    @PostMapping("/dealers/{id}/revoke")
+    public ResponseEntity<Map<String, String>> revokeDealer(@PathVariable UUID id) {
+        userApprovalService.revokeByDealerId(id);
+        return ResponseEntity.ok(Map.of("message", "Dealer approval revoked"));
+    }
+
     @PostMapping(value = "/dealers/{dealerId}/documents/dealer-license", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<am.loadboardbackend.dto.document.DocumentUploadResponse> uploadDealerLicense(
             @PathVariable UUID dealerId,
@@ -230,8 +238,6 @@ public class AdminController {
         return ResponseEntity.ok(documentStorageService.storeDealerDocument(file, dealerId, "DEALER", "CORPORATE_PAPERWORK"));
     }
 
-    // ── Legacy user-level approval (by user id) ──────────────────────────────
-
     @PostMapping("/users/{id}/approve")
     public ResponseEntity<User> approveUser(@PathVariable UUID id) {
         return ResponseEntity.ok(userApprovalService.approveUser(id));
@@ -241,9 +247,7 @@ public class AdminController {
     public ResponseEntity<User> rejectUser(@PathVariable UUID id) {
         return ResponseEntity.ok(userApprovalService.rejectUser(id));
     }
-
-    // ── User history / audit log ─────────────────────────────────────────────
-
+    
     @GetMapping("/users/{id}/history")
     public ResponseEntity<List<AuditLog>> getUserHistory(@PathVariable UUID id) {
         return ResponseEntity.ok(adminService.getUserHistory(id));

@@ -1,9 +1,11 @@
 package am.loadboardbackend.service;
 
+import am.loadboardbackend.config.AppProperties;
 import am.loadboardbackend.dto.rating.RatingDto;
 import am.loadboardbackend.dto.rating.RatingTagStat;
 import am.loadboardbackend.dto.rating.RatingsResponse;
 import am.loadboardbackend.dto.rating.SubmitRatingRequest;
+import am.loadboardbackend.mailing.NewRatingEmailContext;
 import am.loadboardbackend.model.Broker;
 import am.loadboardbackend.model.Carrier;
 import am.loadboardbackend.model.LoadPosting;
@@ -13,6 +15,7 @@ import am.loadboardbackend.repository.BrokerRepository;
 import am.loadboardbackend.repository.CarrierRepository;
 import am.loadboardbackend.repository.LoadPostingRepository;
 import am.loadboardbackend.repository.RatingRepository;
+import am.loadboardbackend.repository.UserRepository;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +40,9 @@ public class RatingService {
     private final LoadPostingRepository loadRepository;
     private final BrokerRepository brokerRepository;
     private final CarrierRepository carrierRepository;
+    private final UserRepository userRepository;
+    private final EmailService emailService;
+    private final AppProperties appProperties;
     private final ObjectMapper objectMapper;
 
     public RatingsResponse getRatingsForMe(User user) {
@@ -142,6 +148,74 @@ public class RatingService {
         }
 
         ratingRepository.save(rating);
+        sendRatingNotification(rating, submitter, load);
+    }
+
+    private void sendRatingNotification(Rating rating, User submitter, LoadPosting load) {
+        try {
+            String targetType = rating.getTargetType();
+            UUID targetId = rating.getTargetId();
+
+            // Resolve recipient email + name
+            String recipientEmail = null;
+            String recipientName = null;
+            String dashboardUrl = appProperties.getFrontend().getBaseUrl() + "/my-rating";
+
+            if ("broker".equals(targetType)) {
+                User recipient = userRepository.findByBrokerId(targetId).orElse(null);
+                if (recipient == null) recipient = userRepository.findByDealerId(targetId).orElse(null);
+                if (recipient != null) {
+                    recipientEmail = recipient.getEmail();
+                    Broker broker = brokerRepository.findById(targetId).orElse(null);
+                    if (broker != null) {
+                        recipientName = broker.getCompanyName() != null ? broker.getCompanyName() : broker.getLegalName();
+                    }
+                }
+            } else {
+                User recipient = userRepository.findByCarrierId(targetId).orElse(null);
+                if (recipient != null) {
+                    recipientEmail = recipient.getEmail();
+                    Carrier carrier = carrierRepository.findById(targetId).orElse(null);
+                    if (carrier != null) {
+                        recipientName = carrier.getCompanyName() != null ? carrier.getCompanyName() : carrier.getLegalName();
+                    }
+                }
+            }
+
+            if (recipientEmail == null) return;
+
+            // Resolve submitter display name + role
+            String fromName = null;
+            String fromRole;
+            UUID submitterId = rating.getSubmitterId();
+            if (submitter.getBroker() != null || submitter.getDealer() != null) {
+                fromRole = "Broker";
+                Broker broker = brokerRepository.findById(submitterId).orElse(null);
+                if (broker != null) fromName = broker.getCompanyName() != null ? broker.getCompanyName() : broker.getLegalName();
+            } else {
+                fromRole = "Carrier";
+                Carrier carrier = carrierRepository.findById(submitterId).orElse(null);
+                if (carrier != null) fromName = carrier.getCompanyName() != null ? carrier.getCompanyName() : carrier.getLegalName();
+            }
+
+            // Vehicle summary from load
+            String vehicleSummary = null;
+            if (load != null && load.getVehicle() != null) {
+                var v = load.getVehicle();
+                vehicleSummary = String.join(" ",
+                        v.getYear() != null ? String.valueOf(v.getYear()) : "",
+                        v.getMake() != null ? v.getMake() : "",
+                        v.getModel() != null ? v.getModel() : ""
+                ).trim();
+            }
+
+            NewRatingEmailContext ctx = new NewRatingEmailContext();
+            ctx.init(recipientEmail, recipientName, rating.getType(), fromName, fromRole,
+                    vehicleSummary, appProperties.getMail().getFrom(), dashboardUrl);
+            emailService.sendEmail(ctx);
+        } catch (Exception e) {
+            log.warn("Failed to send rating notification email: {}", e.getMessage());
+        }
     }
 
     public List<UUID> getMySubmittedLoadIds(User submitter) {

@@ -10,4 +10,5 @@ public class RegisterRequest {
      * Expected values from frontend: BROKER | CARRIER
      */
     private String role;
+    private String captchaToken;
 }

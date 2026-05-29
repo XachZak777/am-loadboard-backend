@@ -23,6 +23,7 @@ public class BidRejectedEmailContext extends AbstractEmailContext {
         put("pickupState", load.getPickupAddress() != null ? load.getPickupAddress().getState() : "");
         put("dropCity",    load.getDropAddress()   != null ? load.getDropAddress().getCity()    : "—");
         put("dropState",   load.getDropAddress()   != null ? load.getDropAddress().getState()   : "");
+        put("orderId",     load.getOrderId());
         put("bidAmount",   bid.getAmount() != null ? "$" + bid.getAmount() : "—");
         put("loadBoardUrl", appBaseUrl + "/loads");
     }

@@ -34,6 +34,9 @@ public class Bid {
     private LocalDate requestedDropDate;
     private String requestedDropTime;
 
+    @Column(columnDefinition = "TEXT")
+    private String notes;
+
     @Enumerated(EnumType.STRING)
     private BidStatus status = BidStatus.PENDING;
 

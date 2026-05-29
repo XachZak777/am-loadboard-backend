@@ -5,13 +5,14 @@ import am.loadboardbackend.dto.carrier.CarrierProfileRequest;
 import am.loadboardbackend.dto.carrier.CarrierPublicDto;
 import am.loadboardbackend.dto.carrier.CarrierResponseDto;
 import am.loadboardbackend.dto.auth.LoginResponse;
-import am.loadboardbackend.dto.auth.RegisterCarrierRequest;
 import am.loadboardbackend.dto.document.DocumentUploadResponse;
 import am.loadboardbackend.model.Carrier;
 import am.loadboardbackend.model.User;
+import am.loadboardbackend.dto.load.LoadPostingDto;
 import am.loadboardbackend.service.CarrierProfileService;
 import am.loadboardbackend.service.CarrierService;
 import am.loadboardbackend.service.DocumentStorageService;
+import am.loadboardbackend.service.PreferredLoadService;
 import am.loadboardbackend.service.RatingService;
 import am.loadboardbackend.service.RegistrationService;
 import lombok.RequiredArgsConstructor;
@@ -34,16 +35,7 @@ public class CarrierController {
     private final CarrierProfileService carrierProfileService;
     private final DocumentStorageService documentStorageService;
     private final RatingService ratingService;
-
-    @PostMapping("/register")
-    public LoginResponse register(@RequestBody RegisterCarrierRequest request) {
-        return registrationService.registerCarrier(request);
-    }
-
-    @PostMapping("/register-from-cache")
-    public LoginResponse registerFromCache(@RequestBody am.loadboardbackend.dto.validation.SaveFromValidationRequest req) {
-        return registrationService.registerCarrierFromValidation(req.validationId(), req.email(), req.password());
-    }
+    private final PreferredLoadService preferredLoadService;
 
     @PostMapping("/register-with-preview")
     public LoginResponse registerWithPreview(@RequestBody am.loadboardbackend.dto.auth.RegisterCarrierFromPreviewRequest req) {
@@ -191,12 +183,40 @@ public class CarrierController {
                 c.getCompanyName(),
                 c.getOperatingStatus(),
                 c.getSafetyRating(),
+                c.getPhyStreet(),
                 c.getPhyCity(),
                 c.getPhyState(),
+                c.getPhyZip(),
                 c.getTotalPowerUnits(),
                 c.getPhoneNumber(),
                 ratingScore
         );
+    }
+
+    @GetMapping("/preferred-loads")
+    public ResponseEntity<List<LoadPostingDto>> getPreferredLoads(@AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(preferredLoadService.list(user));
+    }
+
+    @GetMapping("/preferred-loads/ids")
+    public ResponseEntity<List<UUID>> getPreferredLoadIds(@AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(preferredLoadService.savedLoadIds(user));
+    }
+
+    @PostMapping("/preferred-loads/{loadId}")
+    public ResponseEntity<Void> addPreferredLoad(
+            @AuthenticationPrincipal User user,
+            @PathVariable UUID loadId) {
+        preferredLoadService.add(user, loadId);
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/preferred-loads/{loadId}")
+    public ResponseEntity<Void> removePreferredLoad(
+            @AuthenticationPrincipal User user,
+            @PathVariable UUID loadId) {
+        preferredLoadService.remove(user, loadId);
+        return ResponseEntity.noContent().build();
     }
 }
 

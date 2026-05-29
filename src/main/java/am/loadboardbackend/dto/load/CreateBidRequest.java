@@ -11,5 +11,6 @@ public record CreateBidRequest(
         LocalDate requestedPickupDate,
         String requestedPickupTime,
         LocalDate requestedDropDate,
-        String requestedDropTime
+        String requestedDropTime,
+        String notes
 ) {}

@@ -45,6 +45,10 @@
 
         <div class="label">Load Details</div>
         <table class="detail-table">
+            <tr th:if="${orderId != null}">
+                <td>Order ID</td>
+                <td><span style="font-family: monospace; font-weight: 700;" th:text="${orderId}">—</span></td>
+            </tr>
             <tr>
                 <td>Vehicle</td>
                 <td th:text="${vehicleSummary}">Vehicle</td>

@@ -32,6 +32,7 @@ public class LoadStatusUpdateEmailContext extends AbstractEmailContext {
         put("statusLabel",       statusLabel);
         put("statusDescription", descriptionFor(newStatus, carrierName, vehicleSummary));
         put("newStatus",         newStatus);
+        put("orderId",           load.getOrderId());
         put("dashboardUrl",      appBaseUrl + "/broker/dashboard");
     }
 

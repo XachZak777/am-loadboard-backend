@@ -13,8 +13,10 @@ public record CarrierPublicDto(
         String companyName,
         String operatingStatus,
         String safetyRating,
+        String phyStreet,
         String phyCity,
         String phyState,
+        String phyZip,
         Integer totalPowerUnits,
         String phoneNumber,
         Integer ratingScore

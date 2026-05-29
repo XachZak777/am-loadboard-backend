@@ -41,6 +41,7 @@ public class LoadPostingDto {
     private String trailerType;
 
     private String description;
+    private String paymentNotes;
     private Double weight;
     private Double price;
     private Double distance;

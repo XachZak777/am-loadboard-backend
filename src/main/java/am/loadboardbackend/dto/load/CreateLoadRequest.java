@@ -59,6 +59,7 @@ public class CreateLoadRequest {
     private String vehicleAdditionalInfo;
 
     private String description;
+    private String paymentNotes;
     private Double weight;
     private Double price;
     private LocalDate pickupDate;

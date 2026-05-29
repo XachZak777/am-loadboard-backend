@@ -41,17 +41,4 @@ public class CarrierMapper {
                 carrier.getPreferredLines()
         );
     }
-
-    public CarrierPreviewDto toPreview(Carrier carrier) {
-        return new CarrierPreviewDto(
-                carrier.getDotNumber(),
-                carrier.getMcNumber(),
-                carrier.getLegalName(),
-                carrier.getDbaName(),
-                carrier.getPhyCity(),
-                carrier.getPhyState()
-        );
-    }
-
-    // raw FMCSA JSON serialization removed from mapper
 }

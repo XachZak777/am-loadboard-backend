@@ -34,7 +34,7 @@
         <span class="brand">Haulius LoadBoard</span>
     </div>
     <div class="hero">
-        <h1>Bid Not Selected</h1>
+        <h1>Bid Rejected</h1>
         <p th:text="${vehicleSummary + ' — ' + pickupCity + ', ' + pickupState + ' to ' + dropCity + ', ' + dropState}">Vehicle — Route</p>
     </div>
     <div class="body">
@@ -43,6 +43,10 @@
 
         <div class="label">Load Summary</div>
         <table class="detail-table">
+            <tr th:if="${orderId != null}">
+                <td>Order ID</td>
+                <td><span style="font-family: monospace; font-weight: 700;" th:text="${orderId}">—</span></td>
+            </tr>
             <tr>
                 <td>Vehicle</td>
                 <td th:text="${vehicleSummary}">Vehicle</td>

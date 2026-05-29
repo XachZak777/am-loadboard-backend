@@ -3,6 +3,7 @@ package am.loadboardbackend.dto.load;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -39,5 +40,8 @@ public record CarrierBidWithLoadDto(
         LocalDate pickupDate,
         LocalDate deliveryDate,
         String loadStatus,
-        UUID brokerId
+        UUID brokerId,
+        String orderId,
+        String notes,
+        List<AdditionalVehicleRequest> additionalVehicles
 ) {}

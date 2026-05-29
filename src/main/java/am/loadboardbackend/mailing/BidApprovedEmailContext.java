@@ -26,6 +26,7 @@ public class BidApprovedEmailContext extends AbstractEmailContext {
         put("price",       load.getPrice() != null ? "$" + load.getPrice().intValue() : "—");
         put("pickupDate",  load.getPickupDate() != null ? load.getPickupDate().toString() : "—");
         put("bidAmount",   bid != null && bid.getAmount() != null ? "$" + bid.getAmount() : null);
+        put("orderId",     load.getOrderId());
         put("loadId",      load.getId().toString());
         put("dashboardUrl", appBaseUrl + "/carrier/assigned");
     }

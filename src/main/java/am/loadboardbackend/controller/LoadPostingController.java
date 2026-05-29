@@ -88,6 +88,12 @@ public class LoadPostingController {
         return ResponseEntity.ok().build();
     }
 
+    @PostMapping("/{id}/reject/{bidId}")
+    public ResponseEntity<Void> rejectBid(@PathVariable java.util.UUID id, @PathVariable java.util.UUID bidId) {
+        loadService.rejectBid(id, bidId);
+        return ResponseEntity.ok().build();
+    }
+
     @PostMapping("/{id}/auto-assign")
     public ResponseEntity<LoadPostingDto> autoAssignCarrier(@PathVariable UUID id) {
         return ResponseEntity.ok(loadService.autoAssignCarrier(id));
@@ -102,6 +108,12 @@ public class LoadPostingController {
     @PostMapping("/{id}/cancel")
     public ResponseEntity<Void> cancelBooking(@PathVariable java.util.UUID id) {
         loadService.cancelBooking(id);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/{id}/carrier/reject")
+    public ResponseEntity<Void> carrierRejectAssignment(@PathVariable UUID id) {
+        loadService.carrierRejectAssignment(id);
         return ResponseEntity.ok().build();
     }
 

@@ -25,12 +25,6 @@ public class CarrierService {
         return carrierMapper.toResponse(carrier);
     }
 
-    public List<CarrierPreviewDto> getCarrierPreviews(List<Carrier> carriers) {
-        return carriers.stream()
-                .map(carrierMapper::toPreview)
-                .toList();
-    }
-
     public Carrier getEntity(UUID carrierId) {
         return carrierRepository.findById(carrierId)
                 .orElseThrow(() -> new RuntimeException("Carrier not found"));

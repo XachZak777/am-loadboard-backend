@@ -6,6 +6,7 @@ import am.loadboardbackend.dto.dealer.RegisterDealerRequest;
 import am.loadboardbackend.dto.document.DocumentUploadResponse;
 import am.loadboardbackend.model.Dealer;
 import am.loadboardbackend.model.User;
+import am.loadboardbackend.service.CaptchaService;
 import am.loadboardbackend.service.DocumentStorageService;
 import am.loadboardbackend.service.RegistrationService;
 import jakarta.validation.Valid;
@@ -26,9 +27,11 @@ public class DealerController {
 
     private final RegistrationService registrationService;
     private final DocumentStorageService documentStorageService;
+    private final CaptchaService captchaService;
 
     @PostMapping("/register")
     public ResponseEntity<LoginResponse> register(@Valid @RequestBody RegisterDealerRequest req) {
+        captchaService.verify(req.captchaToken());
         return ResponseEntity.status(HttpStatus.CREATED).body(registrationService.registerDealer(req));
     }
 

@@ -26,6 +26,7 @@ public class BidPlacedEmailContext extends AbstractEmailContext {
         put("bidAmount",   bid.getAmount() != null ? "$" + bid.getAmount() : "—");
         put("bookNow",     bid.isBookNow());
         put("carrierName", resolveCarrierName(bid));
+        put("orderId",     load.getOrderId());
         put("loadId",      load.getId().toString());
         put("dashboardUrl", appBaseUrl + "/broker/dashboard");
     }

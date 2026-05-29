@@ -61,7 +61,6 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleRuntime(
             RuntimeException ex, HttpServletRequest request) {
         HttpStatus status = mapStatus(ex.getMessage());
-        // Only log as error if it's truly unexpected (5xx)
         if (status.is5xxServerError()) {
             log.error("Unhandled runtime exception at {}: {}", request.getRequestURI(), ex.getMessage(), ex);
         }

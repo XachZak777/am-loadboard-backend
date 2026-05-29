@@ -5,7 +5,6 @@ import am.loadboardbackend.dto.auth.LoginResponse;
 import am.loadboardbackend.dto.broker.BrokerProfileRequest;
 import am.loadboardbackend.dto.broker.BrokerPublicDto;
 import am.loadboardbackend.dto.broker.BrokerResponseDto;
-import am.loadboardbackend.dto.broker.RegisterBrokerRequest;
 import am.loadboardbackend.dto.document.DocumentUploadResponse;
 import am.loadboardbackend.dto.load.LoadPostingDto;
 import am.loadboardbackend.dto.load.CreateLoadRequest;
@@ -41,16 +40,6 @@ public class BrokerController {
     private final DocumentStorageService documentStorageService;
     private final UserRepository userRepository;
     private final RatingService ratingService;
-
-    @PostMapping("/register")
-    public LoginResponse register(@RequestBody RegisterBrokerRequest request) {
-        return registrationService.registerBroker(request);
-    }
-
-    @PostMapping("/register-from-cache")
-    public LoginResponse registerFromCache(@RequestBody am.loadboardbackend.dto.validation.SaveFromValidationRequest req) {
-        return registrationService.registerBrokerFromValidation(req.validationId(), req.email(), req.password());
-    }
 
     @PostMapping("/register-with-preview")
     public LoginResponse registerWithPreview(@RequestBody am.loadboardbackend.dto.auth.RegisterBrokerFromPreviewRequest req) {
@@ -109,11 +98,17 @@ public class BrokerController {
                 b.getLegalName(),
                 b.getCompanyName(),
                 b.getOperatingStatus(),
+                b.getMailingAddress(),
                 b.getCity(),
                 b.getState(),
+                b.getZipCode(),
                 b.getPhoneNumber(),
                 email,
-                ratingScore
+                ratingScore,
+                b.getBondCompany(),
+                b.getBondAgentFirstName(),
+                b.getBondAgentLastName(),
+                b.getBondAgentPhone()
         );
     }
 

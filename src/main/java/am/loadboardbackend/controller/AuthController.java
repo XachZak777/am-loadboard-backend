@@ -18,6 +18,7 @@ import am.loadboardbackend.service.EmailService;
 import am.loadboardbackend.service.SecurityTokenService;
 import am.loadboardbackend.security.LoginRateLimiter;
 import am.loadboardbackend.service.AuthService;
+import am.loadboardbackend.service.CaptchaService;
 import am.loadboardbackend.service.EmailVerificationService;
 import am.loadboardbackend.service.PublicRegistrationService;
 import am.loadboardbackend.service.RegistrationService;
@@ -50,6 +51,7 @@ public class AuthController {
     private final EmailService emailService;
     private final LoginRateLimiter loginRateLimiter;
     private final AppProperties appProperties;
+    private final CaptchaService captchaService;
 
     @Value("${jwt.expiration-ms}")
     private long jwtExpirationMs;
@@ -70,6 +72,8 @@ public class AuthController {
             throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
                     "Too many login attempts. Please try again later.");
         }
+
+        captchaService.verify(request.getCaptchaToken());
 
         User user = authService.validateLoginCredentials(request.getEmail(), request.getPassword());
 
@@ -111,6 +115,7 @@ public class AuthController {
 
     @PostMapping(value = "/register", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<LoginResponse> register(@RequestBody RegisterRequest request) {
+        captchaService.verify(request.getCaptchaToken());
         return ResponseEntity.status(HttpStatus.CREATED).body(publicRegistrationService.register(request));
     }
 
@@ -139,6 +144,7 @@ public class AuthController {
 
     @PostMapping("/forgot-password")
     public ResponseEntity<Map<String, String>> forgotPassword(@RequestBody ForgotPasswordRequest request) {
+        captchaService.verify(request.captchaToken());
         emailVerificationService.initPasswordReset(request.email());
         return ResponseEntity.ok(Map.of("message", "If an account with that email exists, a reset link has been sent"));
     }

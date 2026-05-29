@@ -8,5 +8,6 @@ public record UpdateBidRequest(
         LocalDate requestedPickupDate,
         String requestedPickupTime,
         LocalDate requestedDropDate,
-        String requestedDropTime
+        String requestedDropTime,
+        String notes
 ) {}
