@@ -19,6 +19,8 @@ public class CaptchaService {
     private static final String VERIFY_URL = "https://www.google.com/recaptcha/api/siteverify";
 
     public void verify(String token) {
+        // TODO: re-enable captcha after launch
+        if (true) return;
         if (secretKey == null || secretKey.isBlank()) {
             return;
         }

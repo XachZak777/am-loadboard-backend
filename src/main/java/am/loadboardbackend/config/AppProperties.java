@@ -14,7 +14,6 @@ public class AppProperties {
     private Mail mail = new Mail();
     private Frontend frontend = new Frontend();
     private Cookie cookie = new Cookie();
-    private GoogleMaps googleMaps = new GoogleMaps();
 
     @Getter
     @Setter
@@ -34,11 +33,5 @@ public class AppProperties {
     public static class Cookie {
         private boolean secure = true;
         private String sameSite = "None";
-    }
-
-    @Getter
-    @Setter
-    public static class GoogleMaps {
-        private String apiKey = "";
     }
 }

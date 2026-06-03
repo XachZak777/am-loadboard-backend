@@ -54,32 +54,33 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     ) throws ServletException, IOException {
 
         String cookieToken = extractFromCookie(request);
-        if (cookieToken != null) {
-            if (jwtUtil.validate(cookieToken)) {
-                setAuthentication(cookieToken);
-                filterChain.doFilter(request, response);
-                return;
-            } else if (!isPublicPath(request)) {
-                // Cookie is present but expired/invalid — return 401 so the frontend can redirect
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                response.setContentType("application/json");
-                response.getWriter().write("{\"message\":\"Session expired\"}");
-                return;
-            }
-            // Invalid cookie on a public path — fall through unauthenticated
+        if (cookieToken != null && jwtUtil.validate(cookieToken)) {
+            setAuthentication(cookieToken);
+            filterChain.doFilter(request, response);
+            return;
         }
 
+        // Cookie absent or invalid — check Authorization: Bearer header.
+        // This covers the post-registration profile-save flow where the server
+        // issues a token in the response body (no cookie yet) but a stale cookie
+        // from a previous session may still be present in the browser.
         String header = request.getHeader("Authorization");
         if (header != null && header.startsWith("Bearer ")) {
             String headerToken = header.substring(7);
             if (jwtUtil.validate(headerToken)) {
                 setAuthentication(headerToken);
-            } else {
+            } else if (!isPublicPath(request)) {
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                 response.setContentType("application/json");
                 response.getWriter().write("{\"message\":\"Invalid or expired token\"}");
                 return;
             }
+        } else if (cookieToken != null && !isPublicPath(request)) {
+            // Had a cookie but it was invalid, and no Bearer token provided
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setContentType("application/json");
+            response.getWriter().write("{\"message\":\"Session expired\"}");
+            return;
         }
 
         filterChain.doFilter(request, response);

@@ -34,6 +34,7 @@ public class CarrierProfileService {
         // Locked fields — only writable during registration wizard (before admin approval)
         if (!postRegistration) {
             if (req.companyName() != null)    carrier.setCompanyName(req.companyName());
+            if (req.dbaName() != null)        carrier.setDbaName(req.dbaName());
             if (req.dotNumber() != null)      carrier.setDotNumber(req.dotNumber());
             if (req.mcNumber() != null)       carrier.setMcNumber(req.mcNumber());
             if (req.mailingAddress() != null) carrier.setMailingAddress(req.mailingAddress());
