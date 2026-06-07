@@ -16,6 +16,7 @@ import am.loadboardbackend.mailing.BidPlacedEmailContext;
 import am.loadboardbackend.mailing.BidRejectedEmailContext;
 import am.loadboardbackend.mailing.LoadStatusUpdateEmailContext;
 import am.loadboardbackend.mailing.NewLoadAlertEmailContext;
+import am.loadboardbackend.mailing.PaymentConfirmedEmailContext;
 import am.loadboardbackend.model.*;
 import am.loadboardbackend.model.Carrier;
 import am.loadboardbackend.repository.LoadPostingRepository;
@@ -318,8 +319,13 @@ public class LoadPostingService {
                 })
                 .collect(Collectors.toList());
 
-        // Include loads directly assigned to this carrier (no bid record created for them)
-        Set<UUID> bidLoadIds = fromBids.stream().map(CarrierBidWithLoadDto::loadId).collect(Collectors.toSet());
+        // Include loads directly assigned to this carrier (no bid record created for them).
+        // Only exclude loads where the carrier has an active (non-rejected/non-cancelled) bid,
+        // so that a previously-rejected bid doesn't hide a subsequent direct assignment.
+        Set<UUID> bidLoadIds = fromBids.stream()
+                .filter(b -> !"REJECTED".equals(b.bidStatus()) && !"CANCELLED".equals(b.bidStatus()))
+                .map(CarrierBidWithLoadDto::loadId)
+                .collect(Collectors.toSet());
         List<LoadPosting.LoadStatus> activeStatuses = List.of(
                 LoadPosting.LoadStatus.ASSIGNED, LoadPosting.LoadStatus.PICKED_UP,
                 LoadPosting.LoadStatus.DELIVERED, LoadPosting.LoadStatus.PAID);
@@ -746,7 +752,11 @@ public class LoadPostingService {
         }
         load.setStatus(nextStatus);
         LoadPosting saved = loadRepo.save(load);
-        notifyBrokerOfStatusUpdate(saved, current.getCarrier(), nextStatus.name());
+        if (nextStatus == LoadPosting.LoadStatus.PAID) {
+            notifyPaymentConfirmed(saved, current.getCarrier());
+        } else {
+            notifyBrokerOfStatusUpdate(saved, current.getCarrier(), nextStatus.name());
+        }
         return toDto(saved);
     }
 
@@ -770,6 +780,37 @@ public class LoadPostingService {
             emailService.sendEmail(ctx);
         } catch (Exception e) {
             log.error("Failed to send status update email for loadId={}: {}", load.getId(), e.getMessage(), e);
+        }
+    }
+
+    private void notifyPaymentConfirmed(LoadPosting load, Carrier carrier) {
+        try {
+            // Email to carrier
+            String carrierEmail = userRepository.findByCarrierId(carrier.getId()).map(User::getEmail).orElse(null);
+            String carrierName  = carrier.getCompanyName() != null ? carrier.getCompanyName() : carrier.getLegalName();
+            if (carrierEmail != null) {
+                PaymentConfirmedEmailContext carrierCtx = new PaymentConfirmedEmailContext();
+                carrierCtx.initForCarrier(carrierEmail, carrierName, load, appProperties.getMail().getFrom(), appProperties.getFrontend().getBaseUrl());
+                emailService.sendEmail(carrierCtx);
+            }
+
+            // Email to broker / dealer
+            String brokerEmail = null;
+            String brokerName  = null;
+            if (load.getBroker() != null) {
+                brokerEmail = userRepository.findByBrokerId(load.getBroker().getId()).map(User::getEmail).orElse(null);
+                brokerName  = load.getBroker().getCompanyName() != null ? load.getBroker().getCompanyName() : load.getBroker().getLegalName();
+            } else if (load.getDealer() != null) {
+                brokerEmail = userRepository.findByDealerId(load.getDealer().getId()).map(User::getEmail).orElse(null);
+                brokerName  = load.getDealer().getCompanyName();
+            }
+            if (brokerEmail != null) {
+                PaymentConfirmedEmailContext brokerCtx = new PaymentConfirmedEmailContext();
+                brokerCtx.initForBroker(brokerEmail, brokerName, load, carrier, appProperties.getMail().getFrom(), appProperties.getFrontend().getBaseUrl());
+                emailService.sendEmail(brokerCtx);
+            }
+        } catch (Exception e) {
+            log.error("Failed to send payment confirmation emails for loadId={}: {}", load.getId(), e.getMessage(), e);
         }
     }
 

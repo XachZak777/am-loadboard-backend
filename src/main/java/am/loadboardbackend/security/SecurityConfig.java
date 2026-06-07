@@ -54,19 +54,15 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/validate/**",
                                 "/api/auth/**",
-                                "/api/auth/login",
-                                "/api/auth/register",
-                                "/api/auth/verify-email",
-                                "/api/auth/resend-verification",
-                                "/api/auth/forgot-password",
-                                "/api/auth/reset-password",
                                 "/api/carriers/register",
                                 "/api/brokers/register",
-                                "/api/dealers/register",
-                                "/api/loads/**",
-                                "/api/files/**"
+                                "/api/dealers/register"
                         ).permitAll()
+                        // Public load browsing — list all open loads and view a single load
+                        .requestMatchers(HttpMethod.GET, "/api/loads", "/api/loads/*").permitAll()
+                        // Public company ratings
                         .requestMatchers(HttpMethod.GET, "/api/ratings/**").permitAll()
+                        // Everything else requires authentication
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(sess ->

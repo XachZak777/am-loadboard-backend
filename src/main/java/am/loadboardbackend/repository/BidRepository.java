@@ -14,9 +14,9 @@ public interface BidRepository extends JpaRepository<Bid, UUID> {
     List<Bid> findAllByCarrierId(UUID carrierId);
     void deleteAllByLoadId(UUID loadId);
 
-    @Query("SELECT COUNT(b) FROM Bid b WHERE b.load.broker.id = :brokerId AND b.status = :status")
+    @Query("SELECT COUNT(DISTINCT b.load.id) FROM Bid b WHERE b.load.broker.id = :brokerId AND b.status = :status")
     long countByBrokerIdAndStatus(@Param("brokerId") UUID brokerId, @Param("status") BidStatus status);
 
-    @Query("SELECT COUNT(b) FROM Bid b WHERE b.load.dealer.id = :dealerId AND b.status = :status")
+    @Query("SELECT COUNT(DISTINCT b.load.id) FROM Bid b WHERE b.load.dealer.id = :dealerId AND b.status = :status")
     long countByDealerIdAndStatus(@Param("dealerId") UUID dealerId, @Param("status") BidStatus status);
 }
