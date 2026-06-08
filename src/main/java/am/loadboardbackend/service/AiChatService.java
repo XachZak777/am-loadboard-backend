@@ -23,7 +23,6 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -74,9 +73,9 @@ public class AiChatService {
         User user = authService.currentUserOrThrow();
         checkAndIncrementUsage(user.getId());
 
-        List<LoadPosting> openLoads = loadPostingRepository.findAllByStatus(LoadPosting.LoadStatus.OPEN)
+        List<LoadPosting> openLoads = loadPostingRepository.findAll()
                 .stream()
-                .filter(l -> l.getPickupDate() == null || !l.getPickupDate().isBefore(LocalDate.now()))
+                .filter(l -> l.getStatus() == null || l.getStatus() == LoadPosting.LoadStatus.OPEN)
                 .limit(MAX_LOADS)
                 .collect(Collectors.toList());
 
@@ -169,7 +168,9 @@ public class AiChatService {
                 "Format your response clearly with load Order ID, route (city, state → city, state), " +
                 "distance in miles, price, price per mile, vehicle details, and pickup/delivery dates. " +
                 "If no loads match the query, say so politely and suggest the closest alternatives. " +
-                "Keep responses concise and focused on the top 5 most relevant loads.";
+                "Keep responses concise and focused on the top 5 most relevant loads. " +
+                "IMPORTANT: Use plain text only. No markdown of any kind: no **, ##, ---, *, >, ` backticks, or | tables. " +
+                "Use numbers like '1.' for lists and simple line breaks for spacing.";
     }
 
     private String buildPrompt(String userMessage, User user, List<LoadPosting> loads) {
