@@ -1,3 +1,3 @@
 package am.loadboardbackend.dto.auth;
 
-public record ForgotPasswordRequest(String email, String captchaToken) {}
+public record ForgotPasswordRequest(String email) {}

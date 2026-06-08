@@ -56,7 +56,8 @@ public class SecurityConfig {
                                 "/api/auth/**",
                                 "/api/carriers/register",
                                 "/api/brokers/register",
-                                "/api/dealers/register"
+                                "/api/dealers/register",
+                                "/api/ai/support"
                         ).permitAll()
                         // Public load browsing — list all open loads and view a single load
                         .requestMatchers(HttpMethod.GET, "/api/loads", "/api/loads/*").permitAll()

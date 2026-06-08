@@ -17,6 +17,5 @@ public record RegisterDealerRequest(
     String yearEstablished,
     String dealerLicenseNumber,
     String auctionAccessNumber,
-    String howDidYouHear,
-    String captchaToken
+    String howDidYouHear
 ) {}
