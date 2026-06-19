@@ -36,36 +36,40 @@ public class AdminUserService {
      * Returns all non-admin users (carriers + brokers) with their profile
      * details and uploaded documents.
      */
+    @Transactional(readOnly = true)
     public List<AdminUserDto> getAllUsers() {
         log.info("Admin fetching all users");
-        return userRepository.findByRoleNot(UserRole.ROLE_ADMIN)
+        return userRepository.findByRoleNotWithProfiles(UserRole.ROLE_ADMIN)
                 .stream()
                 .map(this::toDto)
                 .toList();
     }
 
     /** Returns only users who have been approved (adminApproved = true). */
+    @Transactional(readOnly = true)
     public List<AdminUserDto> getApprovedUsers() {
         log.info("Admin fetching approved users");
-        return userRepository.findByRoleNotAndAdminApprovedTrue(UserRole.ROLE_ADMIN)
+        return userRepository.findByRoleNotAndAdminApprovedTrueWithProfiles(UserRole.ROLE_ADMIN)
                 .stream()
                 .map(this::toDto)
                 .toList();
     }
 
     /** Returns users who have not yet been reviewed (adminApproved = false AND declined = false). */
+    @Transactional(readOnly = true)
     public List<AdminUserDto> getPendingUsers() {
         log.info("Admin fetching pending users");
-        return userRepository.findByRoleNotAndAdminApprovedFalseAndDeclinedFalse(UserRole.ROLE_ADMIN)
+        return userRepository.findByRoleNotAndAdminApprovedFalseAndDeclinedFalseWithProfiles(UserRole.ROLE_ADMIN)
                 .stream()
                 .map(this::toDto)
                 .toList();
     }
 
     /** Returns users whose registration was actively rejected (declined = true). */
+    @Transactional(readOnly = true)
     public List<AdminUserDto> getRejectedUsers() {
         log.info("Admin fetching rejected users");
-        return userRepository.findByRoleNotAndDeclinedTrue(UserRole.ROLE_ADMIN)
+        return userRepository.findByRoleNotAndDeclinedTrueWithProfiles(UserRole.ROLE_ADMIN)
                 .stream()
                 .map(this::toDto)
                 .toList();
@@ -74,6 +78,7 @@ public class AdminUserService {
     /**
      * Returns a single user's full detail.
      */
+    @Transactional(readOnly = true)
     public AdminUserDto getUserById(UUID userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
@@ -153,8 +158,10 @@ public class AdminUserService {
             Carrier c = user.getCarrier();
             profileId          = c.getId();
             companyName        = c.getCompanyName() != null ? c.getCompanyName() : c.getLegalName();
-            dotNumber          = c.getDotNumber();
-            mcNumber           = c.getMcNumber();
+            String rawDot      = c.getDotNumber();
+            dotNumber          = (rawDot != null && rawDot.startsWith("PENDING-")) ? null : rawDot;
+            String rawMc       = c.getMcNumber();
+            mcNumber           = (rawMc != null && rawMc.startsWith("PENDING-MC-")) ? null : rawMc;
             phoneNumber        = c.getPhoneNumber();
             mailingAddress     = c.getMailingAddress();
             city               = c.getCity();
@@ -173,7 +180,8 @@ public class AdminUserService {
             profileId          = b.getId();
             companyName        = b.getCompanyName() != null ? b.getCompanyName() : b.getLegalName();
             dotNumber          = b.getDotNumber();
-            mcNumber           = b.getMcNumber();
+            String rawBrokerMc = b.getMcNumber();
+            mcNumber           = (rawBrokerMc != null && rawBrokerMc.startsWith("PENDING-MC-")) ? null : rawBrokerMc;
             phoneNumber        = b.getPhoneNumber();
             mailingAddress     = b.getMailingAddress();
             city               = b.getCity();

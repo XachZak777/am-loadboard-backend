@@ -35,8 +35,31 @@ public class CarrierProfileService {
         if (!postRegistration) {
             if (req.companyName() != null)    carrier.setCompanyName(req.companyName());
             if (req.dbaName() != null)        carrier.setDbaName(req.dbaName());
-            if (req.dotNumber() != null)      carrier.setDotNumber(req.dotNumber());
-            if (req.mcNumber() != null)       carrier.setMcNumber(req.mcNumber());
+            if (req.dotNumber() != null) {
+                String newDot = req.dotNumber();
+                carrierRepository.findByDotNumber(newDot).ifPresent(existing -> {
+                    if (!existing.getId().equals(carrier.getId())) {
+                        boolean orphaned = userRepository.findByCarrierId(existing.getId()).isEmpty();
+                        if (orphaned) {
+                            carrierRepository.delete(existing);
+                        } else {
+                            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                                "DOT number " + newDot + " is already registered to another carrier account.");
+                        }
+                    }
+                });
+                carrier.setDotNumber(newDot);
+            }
+            if (req.mcNumber() != null) {
+                String newMc = req.mcNumber();
+                carrierRepository.findByMcNumber(newMc).ifPresent(existing -> {
+                    if (!existing.getId().equals(carrier.getId())) {
+                        throw new ResponseStatusException(HttpStatus.CONFLICT,
+                            "MC number " + newMc + " is already registered to another carrier account.");
+                    }
+                });
+                carrier.setMcNumber(newMc);
+            }
             if (req.mailingAddress() != null) carrier.setMailingAddress(req.mailingAddress());
             if (req.city() != null)           carrier.setCity(req.city());
             if (req.state() != null)          carrier.setState(req.state());

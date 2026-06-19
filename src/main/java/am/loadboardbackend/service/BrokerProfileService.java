@@ -35,7 +35,21 @@ public class BrokerProfileService {
         if (!postRegistration) {
             if (req.companyName() != null)    broker.setCompanyName(req.companyName());
             if (req.dotNumber() != null)      broker.setDotNumber(req.dotNumber());
-            if (req.mcNumber() != null)       broker.setMcNumber(req.mcNumber());
+            if (req.mcNumber() != null) {
+                String newMc = req.mcNumber();
+                brokerRepository.findByMcNumber(newMc).ifPresent(existing -> {
+                    if (!existing.getId().equals(broker.getId())) {
+                        boolean orphaned = userRepository.findByBrokerId(existing.getId()).isEmpty();
+                        if (orphaned) {
+                            brokerRepository.delete(existing);
+                        } else {
+                            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                                "MC number " + newMc + " is already registered to another broker account.");
+                        }
+                    }
+                });
+                broker.setMcNumber(newMc);
+            }
             if (req.mailingAddress() != null) broker.setMailingAddress(req.mailingAddress());
             if (req.city() != null)           broker.setCity(req.city());
             if (req.state() != null)          broker.setState(req.state());

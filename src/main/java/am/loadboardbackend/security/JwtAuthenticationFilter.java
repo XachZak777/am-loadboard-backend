@@ -53,6 +53,25 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
 
+        // Bearer header takes priority over the cookie.  The post-registration
+        // profile-save flow sends the newly issued JWT in the Authorization
+        // header; a stale session cookie from a previous login must not shadow it.
+        String header = request.getHeader("Authorization");
+        if (header != null && header.startsWith("Bearer ")) {
+            String headerToken = header.substring(7);
+            if (jwtUtil.validate(headerToken)) {
+                setAuthentication(headerToken);
+                filterChain.doFilter(request, response);
+                return;
+            } else if (!isPublicPath(request)) {
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.setContentType("application/json");
+                response.getWriter().write("{\"message\":\"Invalid or expired token\"}");
+                return;
+            }
+        }
+
+        // No Bearer token — fall back to the httpOnly JWT cookie.
         String cookieToken = extractFromCookie(request);
         if (cookieToken != null && jwtUtil.validate(cookieToken)) {
             setAuthentication(cookieToken);
@@ -60,23 +79,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        // Cookie absent or invalid — check Authorization: Bearer header.
-        // This covers the post-registration profile-save flow where the server
-        // issues a token in the response body (no cookie yet) but a stale cookie
-        // from a previous session may still be present in the browser.
-        String header = request.getHeader("Authorization");
-        if (header != null && header.startsWith("Bearer ")) {
-            String headerToken = header.substring(7);
-            if (jwtUtil.validate(headerToken)) {
-                setAuthentication(headerToken);
-            } else if (!isPublicPath(request)) {
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                response.setContentType("application/json");
-                response.getWriter().write("{\"message\":\"Invalid or expired token\"}");
-                return;
-            }
-        } else if (cookieToken != null && !isPublicPath(request)) {
-            // Had a cookie but it was invalid, and no Bearer token provided
+        if (cookieToken != null && !isPublicPath(request)) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.setContentType("application/json");
             response.getWriter().write("{\"message\":\"Session expired\"}");

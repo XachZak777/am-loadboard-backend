@@ -115,8 +115,11 @@ public class RegistrationService {
     }
 
     /**
-     * Minimal broker registration — creates a User with ROLE_BROKER but no Broker entity yet.
-     * The broker profile (MC, DOT, company info) is completed later via the profile wizard.
+     * Minimal broker registration — creates a User with ROLE_BROKER and a stub Broker
+     * entity (placeholder MC number).  The real profile fields are filled in by the
+     * subsequent PATCH /api/brokers/profile call from the registration wizard.
+     * Creating the stub here guarantees profileId is always set in the admin view even
+     * if the profile-update call fails (e.g. due to a network error or stale cookie).
      */
     @Transactional
     public LoginResponse registerBrokerMinimal(String email, String password) {
@@ -131,13 +134,22 @@ public class RegistrationService {
         user.setAdminApproved(false);
         userRepository.save(user);
 
-        log.info("RegisterBrokerMinimal success email={} userId={}", email, user.getId());
+        Broker broker = new Broker();
+        broker.setMcNumber("PENDING-MC-" + user.getId());
+        brokerRepository.save(broker);
+        user.setBroker(broker);
+        userRepository.save(user);
+
+        log.info("RegisterBrokerMinimal success email={} userId={} brokerId={}", email, user.getId(), broker.getId());
         return authService.issueTokenForUser(user);
     }
 
     /**
-     * Minimal carrier registration — creates a User with ROLE_CARRIER but no Carrier entity yet.
-     * The carrier profile (DOT, MC, company info) is completed later via the profile wizard.
+     * Minimal carrier registration — creates a User with ROLE_CARRIER and a stub Carrier
+     * entity (placeholder DOT/MC numbers).  The real profile fields are filled in by the
+     * subsequent PATCH /api/carriers/profile call from the registration wizard.
+     * Creating the stub here guarantees profileId is always set in the admin view even
+     * if the profile-update call fails (e.g. due to a network error or stale cookie).
      */
     @Transactional
     public LoginResponse registerCarrierMinimal(String email, String password) {
@@ -152,7 +164,14 @@ public class RegistrationService {
         user.setAdminApproved(false);
         userRepository.save(user);
 
-        log.info("RegisterCarrierMinimal success email={} userId={}", email, user.getId());
+        Carrier carrier = new Carrier();
+        carrier.setDotNumber("PENDING-" + user.getId());
+        carrier.setMcNumber("PENDING-MC-" + user.getId());
+        carrierRepository.save(carrier);
+        user.setCarrier(carrier);
+        userRepository.save(user);
+
+        log.info("RegisterCarrierMinimal success email={} userId={} carrierId={}", email, user.getId(), carrier.getId());
         return authService.issueTokenForUser(user);
     }
 
