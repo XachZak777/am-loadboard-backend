@@ -1,0 +1,37 @@
+package am.loadboardbackend.config;
+
+import lombok.Getter;
+import lombok.Setter;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.stereotype.Component;
+
+@Component
+@ConfigurationProperties(prefix = "app")
+@Getter
+@Setter
+public class AppProperties {
+
+    private Mail mail = new Mail();
+    private Frontend frontend = new Frontend();
+    private Cookie cookie = new Cookie();
+
+    @Getter
+    @Setter
+    public static class Mail {
+        private String from;
+        private String fromName = "Haulius";
+    }
+
+    @Getter
+    @Setter
+    public static class Frontend {
+        private String baseUrl;
+    }
+
+    @Getter
+    @Setter
+    public static class Cookie {
+        private boolean secure = true;
+        private String sameSite = "None";
+    }
+}
