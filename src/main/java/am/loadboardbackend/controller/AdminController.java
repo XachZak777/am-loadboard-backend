@@ -206,6 +206,14 @@ public class AdminController {
         return ResponseEntity.ok(documentStorageService.storeMcAuthority(file, brokerId, "BROKER"));
     }
 
+    @PatchMapping("/dealers/{dealerId}/profile")
+    public ResponseEntity<Map<String, String>> updateDealerProfile(
+            @PathVariable UUID dealerId,
+            @RequestBody am.loadboardbackend.dto.dealer.DealerProfileRequest req) {
+        adminUserService.updateDealerProfile(dealerId, req);
+        return ResponseEntity.ok(Map.of("message", "Dealer profile updated"));
+    }
+
     @PostMapping("/dealers/{id}/approve")
     public ResponseEntity<Map<String, String>> approveDealer(@PathVariable UUID id) {
         userApprovalService.approveByDealerId(id);

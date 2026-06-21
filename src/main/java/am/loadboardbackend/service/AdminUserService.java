@@ -98,10 +98,11 @@ public class AdminUserService {
         log.info("Admin {} deleting user {} ({})", admin.getEmail(), userId, user.getEmail());
 
         // Remove documents
-        String ownerType = user.getCarrier() != null ? "CARRIER" : "BROKER";
-        UUID   ownerId   = user.getCarrier() != null
-                ? user.getCarrier().getId()
-                : (user.getBroker() != null ? user.getBroker().getId() : null);
+        String ownerType = user.getCarrier() != null ? "CARRIER"
+                : user.getBroker() != null ? "BROKER" : "DEALER";
+        UUID   ownerId   = user.getCarrier() != null ? user.getCarrier().getId()
+                : user.getBroker() != null ? user.getBroker().getId()
+                : user.getDealer() != null ? user.getDealer().getId() : null;
         if (ownerId != null) {
             List<Document> docs = documentRepository.findByOwnerIdAndOwnerType(ownerId, ownerType);
             documentRepository.deleteAll(docs);
@@ -322,5 +323,25 @@ public class AdminUserService {
         if (req.bondAgentPhone() != null)     broker.setBondAgentPhone(req.bondAgentPhone());
         brokerRepository.save(broker);
         log.info("Admin updated broker profile brokerId={}", brokerId);
+    }
+
+    @Transactional
+    public void updateDealerProfile(UUID dealerId, am.loadboardbackend.dto.dealer.DealerProfileRequest req) {
+        am.loadboardbackend.model.Dealer dealer = dealerRepository.findById(dealerId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Dealer not found"));
+        if (req.companyName() != null)       dealer.setCompanyName(req.companyName());
+        if (req.ownerFirstName() != null)    dealer.setOwnerFirstName(req.ownerFirstName());
+        if (req.ownerLastName() != null)     dealer.setOwnerLastName(req.ownerLastName());
+        if (req.businessPhone() != null)     dealer.setBusinessPhone(req.businessPhone());
+        if (req.companyAddress() != null)    dealer.setCompanyAddress(req.companyAddress());
+        if (req.city() != null)              dealer.setCity(req.city());
+        if (req.state() != null)             dealer.setState(req.state());
+        if (req.zipCode() != null)           dealer.setZipCode(req.zipCode());
+        if (req.yearEstablished() != null)   dealer.setYearEstablished(req.yearEstablished());
+        if (req.dealerLicenseNumber() != null) dealer.setDealerLicenseNumber(req.dealerLicenseNumber());
+        if (req.auctionAccessNumber() != null) dealer.setAuctionAccessNumber(req.auctionAccessNumber());
+        if (req.howDidYouHear() != null)     dealer.setHowDidYouHear(req.howDidYouHear());
+        dealerRepository.save(dealer);
+        log.info("Admin updated dealer profile dealerId={}", dealerId);
     }
 }

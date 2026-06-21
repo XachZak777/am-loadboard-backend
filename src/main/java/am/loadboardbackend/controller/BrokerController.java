@@ -2,6 +2,7 @@ package am.loadboardbackend.controller;
 
 import am.loadboardbackend.dto.admin.AdminDocumentDto;
 import am.loadboardbackend.dto.auth.LoginResponse;
+import am.loadboardbackend.dto.auth.RegisterBrokerFullRequest;
 import am.loadboardbackend.dto.broker.BrokerProfileRequest;
 import am.loadboardbackend.dto.broker.BrokerPublicDto;
 import am.loadboardbackend.dto.broker.BrokerResponseDto;
@@ -15,9 +16,11 @@ import am.loadboardbackend.service.BrokerProfileService;
 import am.loadboardbackend.service.BrokerService;
 import am.loadboardbackend.service.DocumentStorageService;
 import am.loadboardbackend.service.LoadPostingService;
+import am.loadboardbackend.service.PublicRegistrationService;
 import am.loadboardbackend.service.RatingService;
 import am.loadboardbackend.service.RegistrationService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -34,12 +37,19 @@ import java.util.UUID;
 public class BrokerController {
 
     private final RegistrationService registrationService;
+    private final PublicRegistrationService publicRegistrationService;
     private final BrokerService brokerService;
     private final LoadPostingService loadPostingService;
     private final BrokerProfileService brokerProfileService;
     private final DocumentStorageService documentStorageService;
     private final UserRepository userRepository;
     private final RatingService ratingService;
+
+    @PostMapping("/register")
+    public ResponseEntity<LoginResponse> register(@RequestBody RegisterBrokerFullRequest req) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(publicRegistrationService.registerBrokerFull(req));
+    }
 
     @PostMapping("/register-with-preview")
     public LoginResponse registerWithPreview(@RequestBody am.loadboardbackend.dto.auth.RegisterBrokerFromPreviewRequest req) {

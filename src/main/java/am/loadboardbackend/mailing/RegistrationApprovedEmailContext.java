@@ -16,12 +16,18 @@ public class RegistrationApprovedEmailContext extends AbstractEmailContext {
         String companyName = "";
         if (user.getCarrier() != null) {
             role = "Carrier";
-            companyName = user.getCarrier().getLegalName() != null
-                    ? user.getCarrier().getLegalName() : "";
+            companyName = user.getCarrier().getCompanyName() != null
+                    ? user.getCarrier().getCompanyName()
+                    : (user.getCarrier().getLegalName() != null ? user.getCarrier().getLegalName() : "");
         } else if (user.getBroker() != null) {
             role = "Broker";
-            companyName = user.getBroker().getLegalName() != null
-                    ? user.getBroker().getLegalName() : "";
+            companyName = user.getBroker().getCompanyName() != null
+                    ? user.getBroker().getCompanyName()
+                    : (user.getBroker().getLegalName() != null ? user.getBroker().getLegalName() : "");
+        } else if (user.getDealer() != null) {
+            role = "Dealer";
+            companyName = user.getDealer().getCompanyName() != null
+                    ? user.getDealer().getCompanyName() : "";
         }
 
         put("firstName", name);

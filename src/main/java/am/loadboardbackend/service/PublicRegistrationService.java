@@ -57,6 +57,50 @@ public class PublicRegistrationService {
     }
 
     /**
+     * Single-step carrier registration — creates user + full carrier profile in one
+     * transaction, then sends the verification email. No separate profile-update call
+     * is required, so the admin sees all data immediately after sign-up.
+     */
+    public LoginResponse registerCarrierFull(am.loadboardbackend.dto.auth.RegisterCarrierFullRequest req) {
+        LoginResponse response = registrationService.registerCarrierFull(req);
+        try {
+            User user = userRepository.findByEmail(req.email())
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.INTERNAL_SERVER_ERROR, "User not found after registration"));
+            sendVerificationEmail(user);
+        } catch (Exception e) {
+            log.error("Failed to send verification email for email={}: {}", req.email(), e.getMessage(), e);
+        }
+        return response;
+    }
+
+    public LoginResponse registerBrokerFull(am.loadboardbackend.dto.auth.RegisterBrokerFullRequest req) {
+        LoginResponse response = registrationService.registerBrokerFull(req);
+        try {
+            User user = userRepository.findByEmail(req.email())
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.INTERNAL_SERVER_ERROR, "User not found after registration"));
+            sendVerificationEmail(user);
+        } catch (Exception e) {
+            log.error("Failed to send verification email for email={}: {}", req.email(), e.getMessage(), e);
+        }
+        return response;
+    }
+
+    public LoginResponse registerDealer(am.loadboardbackend.dto.dealer.RegisterDealerRequest req) {
+        LoginResponse response = registrationService.registerDealer(req);
+        try {
+            User user = userRepository.findByEmail(req.email())
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.INTERNAL_SERVER_ERROR, "User not found after registration"));
+            sendVerificationEmail(user);
+        } catch (Exception e) {
+            log.error("Failed to send verification email for email={}: {}", req.email(), e.getMessage(), e);
+        }
+        return response;
+    }
+
+    /**
      * Creates a fresh verification token and dispatches the email.
      * Can also be called from a "resend verification" endpoint.
      */

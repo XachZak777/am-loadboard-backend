@@ -7,7 +7,7 @@ import am.loadboardbackend.dto.document.DocumentUploadResponse;
 import am.loadboardbackend.model.Dealer;
 import am.loadboardbackend.model.User;
 import am.loadboardbackend.service.DocumentStorageService;
-import am.loadboardbackend.service.RegistrationService;
+import am.loadboardbackend.service.PublicRegistrationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,12 +24,12 @@ import org.springframework.web.server.ResponseStatusException;
 @Slf4j
 public class DealerController {
 
-    private final RegistrationService registrationService;
+    private final PublicRegistrationService publicRegistrationService;
     private final DocumentStorageService documentStorageService;
 
     @PostMapping("/register")
     public ResponseEntity<LoginResponse> register(@Valid @RequestBody RegisterDealerRequest req) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(registrationService.registerDealer(req));
+        return ResponseEntity.status(HttpStatus.CREATED).body(publicRegistrationService.registerDealer(req));
     }
 
     @GetMapping("/me")

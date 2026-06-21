@@ -1,6 +1,7 @@
 package am.loadboardbackend.controller;
 
 import am.loadboardbackend.dto.admin.AdminDocumentDto;
+import am.loadboardbackend.dto.auth.RegisterCarrierFullRequest;
 import am.loadboardbackend.dto.carrier.CarrierProfileRequest;
 import am.loadboardbackend.dto.carrier.CarrierPublicDto;
 import am.loadboardbackend.dto.carrier.CarrierResponseDto;
@@ -13,9 +14,11 @@ import am.loadboardbackend.service.CarrierProfileService;
 import am.loadboardbackend.service.CarrierService;
 import am.loadboardbackend.service.DocumentStorageService;
 import am.loadboardbackend.service.PreferredLoadService;
+import am.loadboardbackend.service.PublicRegistrationService;
 import am.loadboardbackend.service.RatingService;
 import am.loadboardbackend.service.RegistrationService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -31,11 +34,22 @@ import java.util.UUID;
 public class CarrierController {
 
     private final RegistrationService registrationService;
+    private final PublicRegistrationService publicRegistrationService;
     private final CarrierService carrierService;
     private final CarrierProfileService carrierProfileService;
     private final DocumentStorageService documentStorageService;
     private final RatingService ratingService;
     private final PreferredLoadService preferredLoadService;
+
+    /**
+     * POST /api/carriers/register — public endpoint that creates user + full
+     * carrier profile in one transaction. Admin sees all data immediately.
+     */
+    @PostMapping("/register")
+    public ResponseEntity<LoginResponse> register(@RequestBody RegisterCarrierFullRequest req) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(publicRegistrationService.registerCarrierFull(req));
+    }
 
     @PostMapping("/register-with-preview")
     public LoginResponse registerWithPreview(@RequestBody am.loadboardbackend.dto.auth.RegisterCarrierFromPreviewRequest req) {

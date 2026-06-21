@@ -176,6 +176,139 @@ public class RegistrationService {
     }
 
     @Transactional
+    public LoginResponse registerCarrierFull(am.loadboardbackend.dto.auth.RegisterCarrierFullRequest req) {
+        log.info("RegisterCarrierFull start email={} dot={}", req.email(), req.dotNumber());
+        assertEmailNotTaken(req.email());
+
+        String mcNumber = (req.mcNumber() != null && !req.mcNumber().isBlank())
+                ? req.mcNumber()
+                : "PENDING-MC-" + java.util.UUID.randomUUID();
+
+        // Remove any orphaned carrier rows with the same DOT/MC so the unique
+        // constraint does not block re-registration after an admin hard-delete.
+        if (req.dotNumber() != null) {
+            carrierRepository.findByDotNumber(req.dotNumber()).ifPresent(existing -> {
+                boolean hasOwner = userRepository.findByCarrierId(existing.getId()).isPresent();
+                if (!hasOwner) {
+                    log.info("Removing orphaned Carrier id={} dot={}", existing.getId(), req.dotNumber());
+                    carrierRepository.delete(existing);
+                } else {
+                    throw new ResponseStatusException(HttpStatus.CONFLICT,
+                            "DOT number " + req.dotNumber() + " is already registered to another carrier account.");
+                }
+            });
+        }
+        if (req.mcNumber() != null && !req.mcNumber().isBlank()) {
+            carrierRepository.findByMcNumber(mcNumber).ifPresent(existing -> {
+                boolean hasOwner = userRepository.findByCarrierId(existing.getId()).isPresent();
+                if (!hasOwner) {
+                    carrierRepository.delete(existing);
+                } else {
+                    throw new ResponseStatusException(HttpStatus.CONFLICT,
+                            "MC number " + mcNumber + " is already registered to another carrier account.");
+                }
+            });
+        }
+        assertDotAndMcNotUsedByBroker(req.dotNumber(), mcNumber);
+
+        Carrier carrier = new Carrier();
+        carrier.setDotNumber(req.dotNumber());
+        carrier.setMcNumber(mcNumber);
+        carrier.setCompanyName(req.companyName());
+        carrier.setDbaName(req.dbaName());
+        carrier.setPhoneNumber(req.phoneNumber());
+        carrier.setInsuranceCompany(req.insuranceCompany());
+        carrier.setCargoInsurance(req.cargoInsurance());
+        carrier.setLiabilityInsurance(req.liabilityInsurance());
+        carrier.setTaxIdType(req.taxIdType());
+        carrier.setTaxId(req.taxId());
+        carrier.setMailingAddress(req.mailingAddress());
+        carrier.setCity(req.city());
+        carrier.setState(req.state());
+        carrier.setZipCode(req.zipCode());
+        carrier.setPreferredLines(req.preferredLines());
+        carrierRepository.save(carrier);
+
+        User user = new User();
+        user.setEmail(req.email());
+        user.setPasswordHash(passwordEncoder.encode(req.password()));
+        user.setRole(UserRole.ROLE_CARRIER);
+        user.setCarrier(carrier);
+        user.setEmailVerified(false);
+        user.setAdminApproved(false);
+        userRepository.save(user);
+
+        log.info("RegisterCarrierFull success email={} userId={} carrierId={}", user.getEmail(), user.getId(), carrier.getId());
+        return authService.issueTokenForUser(user);
+    }
+
+    @Transactional
+    public LoginResponse registerBrokerFull(am.loadboardbackend.dto.auth.RegisterBrokerFullRequest req) {
+        log.info("RegisterBrokerFull start email={} mc={} dot={}", req.email(), req.mcNumber(), req.dotNumber());
+        assertEmailNotTaken(req.email());
+
+        if (req.dotNumber() != null && !req.dotNumber().isBlank()) {
+            brokerRepository.findByDotNumber(req.dotNumber()).ifPresent(existing -> {
+                boolean hasOwner = userRepository.findByBrokerId(existing.getId()).isPresent();
+                if (!hasOwner) {
+                    log.info("Removing orphaned Broker id={} dot={}", existing.getId(), req.dotNumber());
+                    brokerRepository.delete(existing);
+                } else {
+                    throw new ResponseStatusException(HttpStatus.CONFLICT,
+                            "DOT number " + req.dotNumber() + " is already registered to another broker account.");
+                }
+            });
+        }
+        if (req.mcNumber() != null && !req.mcNumber().isBlank()) {
+            brokerRepository.findByMcNumber(req.mcNumber()).ifPresent(existing -> {
+                boolean hasOwner = userRepository.findByBrokerId(existing.getId()).isPresent();
+                if (!hasOwner) {
+                    log.info("Removing orphaned Broker id={} mc={}", existing.getId(), req.mcNumber());
+                    brokerRepository.delete(existing);
+                } else {
+                    throw new ResponseStatusException(HttpStatus.CONFLICT,
+                            "MC number " + req.mcNumber() + " is already registered to another broker account.");
+                }
+            });
+        }
+        assertMcAndDotNotUsedByCarrier(req.dotNumber(), req.mcNumber());
+
+        Broker broker = new Broker();
+        broker.setDotNumber(req.dotNumber());
+        broker.setMcNumber(req.mcNumber() != null && !req.mcNumber().isBlank()
+                ? req.mcNumber() : "PENDING-MC-" + java.util.UUID.randomUUID());
+        broker.setCompanyName(req.companyName());
+        broker.setPhoneNumber(req.phoneNumber());
+        broker.setTaxIdType(req.taxIdType());
+        broker.setTaxId(req.taxId());
+        broker.setMailingAddress(req.mailingAddress());
+        broker.setCity(req.city());
+        broker.setState(req.state());
+        broker.setZipCode(req.zipCode());
+        broker.setBondCompany(req.bondCompany());
+        broker.setBondPolicyNumber(req.bondPolicyNumber());
+        broker.setBondCoverage(req.bondCoverage());
+        broker.setBondEffectiveDate(req.bondEffectiveDate());
+        broker.setBondAgentFirstName(req.bondAgentFirstName());
+        broker.setBondAgentLastName(req.bondAgentLastName());
+        broker.setBondAgentEmail(req.bondAgentEmail());
+        broker.setBondAgentPhone(req.bondAgentPhone());
+        brokerRepository.save(broker);
+
+        User user = new User();
+        user.setEmail(req.email());
+        user.setPasswordHash(passwordEncoder.encode(req.password()));
+        user.setRole(UserRole.ROLE_BROKER);
+        user.setBroker(broker);
+        user.setEmailVerified(false);
+        user.setAdminApproved(false);
+        userRepository.save(user);
+
+        log.info("RegisterBrokerFull success email={} userId={} brokerId={}", user.getEmail(), user.getId(), broker.getId());
+        return authService.issueTokenForUser(user);
+    }
+
+    @Transactional
     public LoginResponse registerAdmin(RegisterAdminRequest request) {
         // Check if any admin exists; if yes, require authentication
         long adminCount = userRepository.countByRole(UserRole.ROLE_ADMIN);
